@@ -21,6 +21,9 @@ func main() {
 		a = append(a, []float32{x, y})
 	}
 
+	// throw in some collinear points
+	a = append(a, []float32{1, 0})
+
 	fmt.Println(seq_jarvis(a))
 	fmt.Println(seq_graham_scan(a))
 

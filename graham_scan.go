@@ -39,7 +39,8 @@ func seq_graham_scan(points [][]float32) [][]float32 {
 		}
 	})
 	// fmt.Println("points post-sort", points)
-	// TODO remove colinear points
+
+	// TODO remove collinear points? might not be necessary
 
 	stack := make([]int, 0, len(points)/4)
 

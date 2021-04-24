@@ -14,12 +14,17 @@ func seq_jarvis(points [][]float32) [][]float32 {
 		// Find leftmost endpoint
 		endpoint := 0
 		for candidate := range points {
-			// TODO handle colinear points
-			if endpoint == p || cross_prod(points[p], points[endpoint], points[candidate]) > 0 {
+			cross := cross_prod(points[p], points[endpoint], points[candidate])
+			if endpoint == p || cross > 0 {
+				// New point is to the left of current endpoint
+				endpoint = candidate
+			} else if cross == 0 && dist(points[p], points[candidate]) > dist(points[p], points[endpoint]) {
+				// New point is collinear but further than current endpoint
 				endpoint = candidate
 			}
 		}
 		p = endpoint
+		// Circled back to original point
 		if endpoint == left {
 			break
 		}
