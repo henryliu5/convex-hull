@@ -22,5 +22,7 @@ func main() {
 	}
 
 	fmt.Println(seq_jarvis(a))
+	// TODO currently generates hull in CCW order
+	fmt.Println(seq_graham_scan(a))
 
 }
