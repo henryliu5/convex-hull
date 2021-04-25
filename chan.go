@@ -13,7 +13,7 @@ func basic_tangent(subhull [][]float32, p []float32) []float32 {
 		if (subhull[endpoint][0] == p[0] && subhull[endpoint][1] == p[1]) || cross > 0 {
 			// New point is to the left of current endpoint
 			endpoint = i
-		} else if cross == 0 && dist(p, subhull[i]) > dist(p, subhull[endpoint]) {
+		} else if cross == 0 && dist(p, subhull[i]) >= dist(p, subhull[endpoint]) {
 			// New point is collinear but further than current endpoint
 			endpoint = i
 		}
@@ -58,7 +58,7 @@ func subhull_jarvis(points [][]float32, subhull_sizes []int, group_size int) [][
 			if (candidates[endpoint][0] == cur_p[0] && candidates[endpoint][1] == cur_p[1]) || cross > 0 {
 				// New point is to the left of current endpoint
 				endpoint = candidate
-			} else if cross == 0 && dist(cur_p, candidates[candidate]) > dist(cur_p, candidates[endpoint]) {
+			} else if cross == 0 && dist(cur_p, candidates[candidate]) >= dist(cur_p, candidates[endpoint]) {
 				// New point is collinear but further than current endpoint
 				endpoint = candidate
 			}

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 )
 
 // Computes ab x ac
@@ -40,5 +41,15 @@ func debug(a ...interface{}) {
 	// change this to switch on/off
 	if false {
 		fmt.Println(a...)
+	}
+}
+
+// Output points to file
+func output_points(filename string, points [][]float32) {
+	f, _ := os.Create(filename)
+	defer f.Close()
+
+	for i := 0; i < len(points); i++ {
+		fmt.Fprintf(f, "%f,%f\n", points[i][0], points[i][1])
 	}
 }

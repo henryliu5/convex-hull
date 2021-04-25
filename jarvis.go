@@ -18,7 +18,7 @@ func seq_jarvis(points [][]float32) [][]float32 {
 			if endpoint == p || cross > 0 {
 				// New point is to the left of current endpoint
 				endpoint = candidate
-			} else if cross == 0 && dist(points[p], points[candidate]) > dist(points[p], points[endpoint]) {
+			} else if cross == 0 && dist(points[p], points[candidate]) >= dist(points[p], points[endpoint]) {
 				// New point is collinear but further than current endpoint
 				endpoint = candidate
 			}
