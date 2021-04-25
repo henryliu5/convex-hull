@@ -1,13 +1,7 @@
 package main
 
-import (
-	"fmt"
-	"time"
-)
-
 // Sequential Jarvis March
 func seq_jarvis(points [][]float32) [][]float32 {
-	fn_start := time.Now()
 	// fmt.Println("points", points)
 	// fmt.Println("leftmost", leftmost(points))
 	var hull [][]float32
@@ -36,6 +30,5 @@ func seq_jarvis(points [][]float32) [][]float32 {
 		}
 	}
 
-	fmt.Println("jarvis march", time.Since(fn_start))
 	return hull
 }

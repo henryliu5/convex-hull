@@ -1,6 +1,9 @@
 package main
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // Computes ab x ac
 func cross_prod(a, b, c []float32) float32 {
@@ -31,4 +34,11 @@ func dist(a, b []float32) float64 {
 	x := a[0] - b[0]
 	y := a[1] - b[1]
 	return math.Sqrt(float64(x*x + y*y))
+}
+
+func debug(a ...interface{}) {
+	// change this to switch on/off
+	if false {
+		fmt.Println(a...)
+	}
 }

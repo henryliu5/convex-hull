@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"sync"
@@ -63,8 +62,6 @@ func qsort(a [][]float32, cmp func([]float32, []float32) bool) [][]float32 {
 
 // Sort by polar angle using custom quicksort (faster)
 func custom_sort(a [][]float32, bot_point []float32, order float32) {
-	fmt.Println("started sort")
-	start := time.Now()
 	// Sort by polar angle to bottom most point
 	cmp := func(a, b []float32) bool {
 		cross := cross_prod(bot_point, a, b)
@@ -82,14 +79,10 @@ func custom_sort(a [][]float32, bot_point []float32, order float32) {
 	// wg.Add(1)
 	// parallel_qsort(a, cmp, wg)
 	// wg.Wait()
-
-	fmt.Println("finished sort", time.Since(start))
 }
 
 // Sort by polar angle using Go builtin slice sort (slow)
 func go_sort(a [][]float32, bot_point []float32, order float32) {
-	fmt.Println("started sort")
-	start := time.Now()
 	// Sort by polar angle to bottom most point
 	sort.Slice(a, func(i, j int) bool {
 		cross := cross_prod(bot_point, a[i], a[j])
@@ -102,12 +95,10 @@ func go_sort(a [][]float32, bot_point []float32, order float32) {
 			return order*cross > 0
 		}
 	})
-	fmt.Println("finished sort", time.Since(start))
 }
 
 // Sequential Graham Scan
 func seq_graham_scan(points [][]float32) [][]float32 {
-	fn_start := time.Now()
 	// Set -1 for CW hull, 1 for CCW
 	var order float32 = -1
 	var float_error float32 = 0.00000001
@@ -126,13 +117,13 @@ func seq_graham_scan(points [][]float32) [][]float32 {
 	bot_point := points[bottom]
 	points[0], points[bottom] = points[bottom], points[0]
 
-	// fmt.Println("points pre-sort", points)
-
+	// Sort points based on angle to the bottom point
 	sort_points := points[1:]
+	debug("started sort")
+	sort_start := time.Now()
 	custom_sort(sort_points, bot_point, order)
 	// go_sort(sort_points, bot_point, order)
-
-	// fmt.Println("points post-sort", points)
+	debug("finished sort", time.Since(sort_start))
 
 	// Remove collinear points
 	new_index := 1
@@ -161,6 +152,5 @@ func seq_graham_scan(points [][]float32) [][]float32 {
 		hull = append(hull, points[i])
 	}
 
-	fmt.Println("graham scan", time.Since(fn_start))
 	return hull
 }
