@@ -4,8 +4,39 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"sync"
 	"time"
 )
+
+// Parallel quicksort
+func parallel_qsort(a [][]float32, cmp func([]float32, []float32) bool, wg *sync.WaitGroup) [][]float32 {
+	if len(a) < 2 {
+		wg.Done()
+		return a
+	}
+	left, right := 0, len(a)-1
+	pivot := 0
+
+	a[pivot], a[right] = a[right], a[pivot]
+	for i := 0; i < right; i++ {
+		if cmp(a[i], a[right]) {
+			a[left], a[i] = a[i], a[left]
+			left++
+		}
+	}
+	a[left], a[right] = a[right], a[left]
+	if len(a) > 20000 {
+		wg.Add(2)
+		go parallel_qsort(a[:left], cmp, wg)
+		go parallel_qsort(a[left+1:], cmp, wg)
+
+	} else {
+		qsort(a[:left], cmp)
+		qsort(a[left+1:], cmp)
+	}
+	wg.Done()
+	return a
+}
 
 // adapted from https://stackoverflow.com/a/55267961/15471686
 func qsort(a [][]float32, cmp func([]float32, []float32) bool) [][]float32 {
@@ -47,6 +78,11 @@ func custom_sort(a [][]float32, bot_point []float32, order float32) {
 		}
 	}
 	qsort(a, cmp)
+	// wg := new(sync.WaitGroup)
+	// wg.Add(1)
+	// parallel_qsort(a, cmp, wg)
+	// wg.Wait()
+
 	fmt.Println("finished sort", time.Since(start))
 }
 
@@ -93,8 +129,8 @@ func seq_graham_scan(points [][]float32) [][]float32 {
 	// fmt.Println("points pre-sort", points)
 
 	sort_points := points[1:]
-	// custom_sort(sort_points, bot_point, order)
-	go_sort(sort_points, bot_point, order)
+	custom_sort(sort_points, bot_point, order)
+	// go_sort(sort_points, bot_point, order)
 
 	// fmt.Println("points post-sort", points)
 
