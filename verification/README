@@ -1,0 +1,3 @@
+run like so
+
+python visualize_points.py filePathOfInputPts filePathOfHullPts filePathToSaveGraph(Use PNG Extension)
