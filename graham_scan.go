@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+var global_bot_point []float32
+var global_order float32
+
+func polar_cmp(a, b []float32) bool {
+	cross := cross_prod(global_bot_point, a, b)
+	// Break colinear ties using distance
+	if cross == 0 {
+		// Point j should be further than point i
+		return dist(global_bot_point, a) < dist(global_bot_point, b)
+	} else {
+		// Point j should be left of point i
+		return global_order*cross > 0
+	}
+}
+
 // Parallel quicksort
 func parallel_qsort(a [][]float32, cmp func([]float32, []float32) bool, wg *sync.WaitGroup) [][]float32 {
 	if len(a) < 2 {
@@ -38,9 +53,9 @@ func parallel_qsort(a [][]float32, cmp func([]float32, []float32) bool, wg *sync
 }
 
 // adapted from https://stackoverflow.com/a/55267961/15471686
-func qsort(a [][]float32, cmp func([]float32, []float32) bool) [][]float32 {
+func qsort(a [][]float32, cmp func([]float32, []float32) bool) {
 	if len(a) < 2 {
-		return a
+		return
 	}
 	left, right := 0, len(a)-1
 	pivot := 0
@@ -56,8 +71,43 @@ func qsort(a [][]float32, cmp func([]float32, []float32) bool) [][]float32 {
 
 	qsort(a[:left], cmp)
 	qsort(a[left+1:], cmp)
+}
 
-	return a
+// Iterative quicksort
+func qsort2(a [][]float32, l, r int, cmp func([]float32, []float32) bool) {
+
+	stack := make([]int, 0, len(a))
+	stack = append(stack, l)
+	stack = append(stack, r)
+
+	for len(stack) > 1 {
+		back := len(stack) - 1
+		r = stack[back]
+		l = stack[back-1]
+
+		stack = stack[:back-1]
+
+		if l >= r || r-l+1 < 2 {
+			continue
+		}
+
+		left, right := l, r
+		pivot := left
+		// fmt.Println(left, right)
+		a[pivot], a[right] = a[right], a[pivot]
+		for i := l; i < right; i++ {
+			if cmp(a[i], a[right]) {
+				a[left], a[i] = a[i], a[left]
+				left++
+			}
+		}
+		a[left], a[right] = a[right], a[left]
+
+		stack = append(stack, l)
+		stack = append(stack, left-1)
+		stack = append(stack, left+1)
+		stack = append(stack, r)
+	}
 }
 
 // Sort by polar angle using custom quicksort (faster)
@@ -74,11 +124,12 @@ func custom_sort(a [][]float32, bot_point []float32, order float32) {
 			return order*cross > 0
 		}
 	}
-	qsort(a, cmp)
-	// wg := new(sync.WaitGroup)
-	// wg.Add(1)
-	// parallel_qsort(a, cmp, wg)
-	// wg.Wait()
+	// qsort(a, cmp)
+	// qsort2(a, 0, len(a)-1, cmp)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	parallel_qsort(a, cmp, wg)
+	wg.Wait()
 }
 
 // Sort by polar angle using Go builtin slice sort (slow)
@@ -100,8 +151,7 @@ func go_sort(a [][]float32, bot_point []float32, order float32) {
 // Sequential Graham Scan
 func seq_graham_scan(points [][]float32) [][]float32 {
 	// Set -1 for CW hull, 1 for CCW
-	var order float32 = -1
-	var float_error float32 = 0.00000001
+	var order float32 = 1
 
 	// Get index of bottommost & leftmost point
 	var miny float32 = math.MaxFloat32
@@ -138,16 +188,16 @@ func seq_graham_scan(points [][]float32) [][]float32 {
 
 	// Iterate through points with Graham scan
 	stack := make([]int, 0, len(points)/4)
-	for i := 1; i < len(points); i++ {
+	for i := 0; i < len(points); i++ {
 		// Pop off stack if new point makes a clockwise turn
-		for len(stack) > 1 && order*cross_prod(points[stack[len(stack)-2]], points[stack[len(stack)-1]], points[i]) <= float_error {
+		for len(stack) > 1 && cross_prod(points[stack[len(stack)-1]], points[stack[len(stack)-2]], points[i]) >= 0 {
 			stack = stack[:len(stack)-1]
 		}
 		stack = append(stack, i)
 	}
 
 	// Stack now contains indices of convex hull
-	var hull [][]float32 = [][]float32{bot_point}
+	var hull [][]float32 = [][]float32{}
 	for _, i := range stack {
 		hull = append(hull, points[i])
 	}
