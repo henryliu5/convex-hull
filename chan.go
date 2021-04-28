@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -13,7 +14,7 @@ func basic_tangent(subhull [][]float32, p []float32) []float32 {
 		if (subhull[endpoint][0] == p[0] && subhull[endpoint][1] == p[1]) || cross > 0 {
 			// New point is to the left of current endpoint
 			endpoint = i
-		} else if cross == 0 && dist(p, subhull[i]) > dist(p, subhull[endpoint]) {
+		} else if cross == 0 && dist(p, subhull[i]) >= dist(p, subhull[endpoint]) {
 			// New point is collinear but further than current endpoint
 			endpoint = i
 		}
@@ -37,7 +38,6 @@ func subhull_jarvis(points [][]float32, subhull_sizes []int, group_size int) [][
 	// Leftmost point starts as first point on hull
 	left := leftmost(points)
 	cur_p := points[left]
-
 	// If need to add more points than the group size, retry with different group size
 	for step := 0; step < group_size; step++ {
 		hull = append(hull, cur_p)
@@ -58,15 +58,20 @@ func subhull_jarvis(points [][]float32, subhull_sizes []int, group_size int) [][
 			if (candidates[endpoint][0] == cur_p[0] && candidates[endpoint][1] == cur_p[1]) || cross > 0 {
 				// New point is to the left of current endpoint
 				endpoint = candidate
-			} else if cross == 0 && dist(cur_p, candidates[candidate]) > dist(cur_p, candidates[endpoint]) {
-				// New point is collinear but further than current endpoint
-				endpoint = candidate
+			} else if cross == 0 && dist(cur_p, candidates[candidate]) >= dist(cur_p, candidates[endpoint]) {
+				if dist(cur_p, points[candidate]) == dist(cur_p, points[endpoint]) && endpoint != left {
+					// New point is collinear but further than current endpoint
+					endpoint = candidate
+				}
 			}
 		}
 		cur_p = candidates[endpoint]
 
 		// Circled back to original point
 		if cur_p[0] == points[left][0] && cur_p[1] == points[left][1] {
+			return hull
+		}
+		if len(hull) == len(points) {
 			return hull
 		}
 	}
@@ -91,6 +96,10 @@ func seq_chans(points [][]float32) [][]float32 {
 
 		// Try out group size
 		group_size := 1 << (1 << t)
+		if group_size == 0 {
+			fmt.Println("chan's failed, too many iterations")
+			return nil
+		}
 		debug("current group size", group_size)
 		if n < group_size {
 			group_size = n
@@ -109,9 +118,9 @@ func seq_chans(points [][]float32) [][]float32 {
 				end = n
 			}
 			// Compute convex hull of subgroup
-			// TODO change to graham scan
 			subhull_start := time.Now()
-			subhull := seq_jarvis(points[start:end])
+			// Use graham scan
+			subhull := seq_graham_scan(points[start:end])
 			subhull_compute += time.Since(subhull_start)
 
 			// Add subhull points

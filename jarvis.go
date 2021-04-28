@@ -2,10 +2,10 @@ package main
 
 // Sequential Jarvis March
 func seq_jarvis(points [][]float32) [][]float32 {
-	// fmt.Println("points", points)
-	// fmt.Println("leftmost", leftmost(points))
+	if len(points) < 3 {
+		return points
+	}
 	var hull [][]float32
-
 	left := leftmost(points)
 	// Last selected point on hull
 	p := left
@@ -18,9 +18,12 @@ func seq_jarvis(points [][]float32) [][]float32 {
 			if endpoint == p || cross > 0 {
 				// New point is to the left of current endpoint
 				endpoint = candidate
-			} else if cross == 0 && dist(points[p], points[candidate]) > dist(points[p], points[endpoint]) {
-				// New point is collinear but further than current endpoint
-				endpoint = candidate
+			} else if cross == 0 && dist(points[p], points[candidate]) >= dist(points[p], points[endpoint]) {
+				// Really annoying edge case when jarvis won't converge b/c left is collinear with something "same distance"
+				if dist(points[p], points[candidate]) == dist(points[p], points[endpoint]) && endpoint != left {
+					// New point is collinear but further than current endpoint
+					endpoint = candidate
+				}
 			}
 		}
 		p = endpoint
