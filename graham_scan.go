@@ -199,6 +199,9 @@ func seq_graham_scan_run(points [][]float32, clockwise bool) [][]float32 {
 
 // Run graham scan, use two passes because of float associativity
 func seq_graham_scan(points [][]float32) [][]float32 {
+	if len(points) < 3 {
+		return points
+	}
 	hull := seq_graham_scan_run(points, false)
 	hull = seq_graham_scan_run(hull, true)
 	return hull
