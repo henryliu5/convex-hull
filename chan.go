@@ -6,7 +6,7 @@ import (
 )
 
 // Find point on this convex subhull that is as left as possible from point p (p must not be inside the subhull)
-func basic_tangent(subhull [][]float32, p []float32) []float32 {
+func basic_tangent(subhull [][2]float32, p [2]float32) [2]float32 {
 	endpoint := 0
 	// Look through this subhull
 	for i := 1; i < len(subhull); i++ {
@@ -24,16 +24,15 @@ func basic_tangent(subhull [][]float32, p []float32) []float32 {
 
 // TODO Use binary search to find tangent point of a subhull instead of using O(n) scan above ^^
 // p: reference point for tangent
-func binary_search_tangent(subhull [][]float32, p []float32) int {
+func binary_search_tangent(subhull [][2]float32, p [2]float32) int {
 	return -1
 }
 
 // Jarvis march on subhulls
-func subhull_jarvis(points [][]float32, subhull_sizes []int, group_size int) [][]float32 {
-
-	var hull [][]float32
+func subhull_jarvis(points [][2]float32, subhull_sizes []int, group_size int) [][2]float32 {
+	var hull [][2]float32
 	n_subhulls := len(subhull_sizes)
-	candidates := make([][]float32, n_subhulls)
+	candidates := make([][2]float32, n_subhulls)
 
 	// Leftmost point starts as first point on hull
 	left := leftmost(points)
@@ -80,13 +79,13 @@ func subhull_jarvis(points [][]float32, subhull_sizes []int, group_size int) [][
 }
 
 // Sequential Chan's algorithm O(nlogh)
-func seq_chans(points [][]float32) [][]float32 {
+func seq_chans(points [][2]float32) [][2]float32 {
 	n := len(points)
 
 	var t uint
 	t = 3 // Init group size as 2^2^3 = 256
 	start := time.Now()
-	subhulls := make([][]float32, 0, n>>1) // n>>1 Just a guess on how many points will be in subhulls
+	subhulls := make([][2]float32, 0, n>>1) // n>>1 Just a guess on how many points will be in subhulls
 	subhull_sizes := make([]int, 0, n/(1<<(1<<t))+1)
 	debug("initial allocation time", time.Since(start))
 
@@ -138,7 +137,7 @@ func seq_chans(points [][]float32) [][]float32 {
 		 * Jarvis March (gift wrap) of subhulls *
 		 ****************************************/
 		march_start := time.Now()
-		var hull [][]float32
+		var hull [][2]float32
 		// Basic way, worse than O(nlogh)
 		// hull = seq_jarvis(subhulls)
 		// Jarvis march meant for Chan's algorithm, should use bsearch

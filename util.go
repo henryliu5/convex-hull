@@ -10,7 +10,7 @@ import (
 )
 
 // Computes ab x ac
-func cross_prod(a, b, c []float32) float32 {
+func cross_prod(a, b, c [2]float32) float32 {
 	x1 := a[0] - b[0]
 	x2 := a[0] - c[0]
 	y1 := a[1] - b[1]
@@ -21,7 +21,7 @@ func cross_prod(a, b, c []float32) float32 {
 }
 
 // Get index of leftmost point
-func leftmost(points [][]float32) int {
+func leftmost(points [][2]float32) int {
 	var min float32 = math.MaxFloat32
 	index := -1
 	for i, point := range points {
@@ -34,7 +34,7 @@ func leftmost(points [][]float32) int {
 }
 
 // Distance between two points
-func dist(a, b []float32) float64 {
+func dist(a, b [2]float32) float64 {
 	x := a[0] - b[0]
 	y := a[1] - b[1]
 	return math.Sqrt(float64(x*x + y*y))
@@ -48,7 +48,7 @@ func debug(a ...interface{}) {
 }
 
 // Output points to file
-func output_points(filename string, points [][]float32) {
+func output_points(filename string, points [][2]float32) {
 	f, _ := os.Create(filename)
 	defer f.Close()
 

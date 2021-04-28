@@ -1,11 +1,11 @@
 package main
 
 // Sequential Jarvis March
-func seq_jarvis(points [][]float32) [][]float32 {
+func seq_jarvis(points [][2]float32) [][2]float32 {
 	if len(points) < 3 {
 		return points
 	}
-	var hull [][]float32
+	var hull [][2]float32
 	left := leftmost(points)
 	// Last selected point on hull
 	p := left

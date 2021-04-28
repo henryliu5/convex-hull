@@ -10,7 +10,7 @@ import (
 var PAR_QUICKSORT_LIMIT int = 2000
 
 // Parallel quicksort
-func parallel_qsort(a [][]float32, cmp func([]float32, []float32) bool, wg *sync.WaitGroup) {
+func parallel_qsort(a [][2]float32, cmp func([2]float32, [2]float32) bool, wg *sync.WaitGroup) {
 	if len(a) >= 2 {
 		left, right := 0, len(a)-1
 		pivot := 0
@@ -40,7 +40,7 @@ func parallel_qsort(a [][]float32, cmp func([]float32, []float32) bool, wg *sync
 }
 
 // Quicksort adapted from https://stackoverflow.com/a/55267961/15471686
-func qsort(a [][]float32, cmp func([]float32, []float32) bool) {
+func qsort(a [][2]float32, cmp func([2]float32, [2]float32) bool) {
 	if len(a) < 2 {
 		return
 	}
@@ -61,7 +61,7 @@ func qsort(a [][]float32, cmp func([]float32, []float32) bool) {
 }
 
 // Iterative quicksort
-func qsort2(a [][]float32, l, r int, cmp func([]float32, []float32) bool) {
+func qsort2(a [][2]float32, l, r int, cmp func([2]float32, [2]float32) bool) {
 
 	stack := make([]int, 0, 2*len(a))
 	stack = append(stack, l)
@@ -98,9 +98,9 @@ func qsort2(a [][]float32, l, r int, cmp func([]float32, []float32) bool) {
 }
 
 // Sort by polar angle using custom quicksort (faster)
-func custom_sort(a [][]float32, bot_point []float32, order float32) {
+func custom_sort(a [][2]float32, bot_point [2]float32, order float32) {
 	// Sort by polar angle to bottom most point
-	cmp := func(a, b []float32) bool {
+	cmp := func(a, b [2]float32) bool {
 		cross := cross_prod(bot_point, a, b)
 		// Break colinear ties using distance
 		if cross == 0 {
@@ -120,7 +120,7 @@ func custom_sort(a [][]float32, bot_point []float32, order float32) {
 }
 
 // Sort by polar angle using Go builtin slice sort (slow)
-func go_sort(a [][]float32, bot_point []float32, order float32) {
+func go_sort(a [][2]float32, bot_point [2]float32, order float32) {
 	// Sort by polar angle to bottom most point
 	sort.Slice(a, func(i, j int) bool {
 		cross := cross_prod(bot_point, a[i], a[j])
@@ -136,7 +136,7 @@ func go_sort(a [][]float32, bot_point []float32, order float32) {
 }
 
 // Sequential Graham Scan
-func seq_graham_scan_run(points [][]float32, clockwise bool) [][]float32 {
+func seq_graham_scan_run(points [][2]float32, clockwise bool) [][2]float32 {
 	// Set -1 for CW hull, 1 for CCW
 	var order float32
 	if clockwise {
@@ -189,7 +189,7 @@ func seq_graham_scan_run(points [][]float32, clockwise bool) [][]float32 {
 	}
 
 	// Stack now contains indices of convex hull
-	var hull [][]float32 = [][]float32{}
+	var hull [][2]float32 = [][2]float32{}
 	for _, i := range stack {
 		hull = append(hull, points[i])
 	}
@@ -198,7 +198,7 @@ func seq_graham_scan_run(points [][]float32, clockwise bool) [][]float32 {
 }
 
 // Run graham scan, use two passes because of float associativity
-func seq_graham_scan(points [][]float32) [][]float32 {
+func seq_graham_scan(points [][2]float32) [][2]float32 {
 	if len(points) < 3 {
 		return points
 	}
