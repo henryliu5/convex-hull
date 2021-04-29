@@ -4,7 +4,6 @@ import (
 	"math"
 	"sort"
 	"sync"
-	"time"
 )
 
 var PAR_QUICKSORT_LIMIT int = 2000
@@ -98,7 +97,7 @@ func qsort2(a [][2]float32, l, r int, cmp func([2]float32, [2]float32) bool) {
 }
 
 // Sort by polar angle using custom quicksort (faster)
-func custom_sort(a [][2]float32, bot_point [2]float32, order float32) {
+func custom_sort(a [][2]float32, bot_point [2]float32, order float32, parallel_sort bool) {
 	// Sort by polar angle to bottom most point
 	cmp := func(a, b [2]float32) bool {
 		cross := cross_prod(bot_point, a, b)
@@ -111,12 +110,16 @@ func custom_sort(a [][2]float32, bot_point [2]float32, order float32) {
 			return order*cross > 0
 		}
 	}
-	// qsort(a, cmp)
-	// qsort2(a, 0, len(a)-1, cmp)
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-	parallel_qsort(a, cmp, wg)
-	wg.Wait()
+	if parallel_sort {
+		wg := new(sync.WaitGroup)
+		wg.Add(1)
+		parallel_qsort(a, cmp, wg)
+		wg.Wait()
+	} else {
+		qsort2(a, 0, len(a)-1, cmp)
+		// qsort(a, cmp)
+	}
+
 }
 
 // Sort by polar angle using Go builtin slice sort (slow)
@@ -135,8 +138,8 @@ func go_sort(a [][2]float32, bot_point [2]float32, order float32) {
 	})
 }
 
-// Sequential Graham Scan
-func seq_graham_scan_run(points [][2]float32, clockwise bool) [][2]float32 {
+// Graham Scan
+func graham_scan_run(points [][2]float32, clockwise, parallel_sort bool) [][2]float32 {
 	// Set -1 for CW hull, 1 for CCW
 	var order float32
 	if clockwise {
@@ -161,11 +164,11 @@ func seq_graham_scan_run(points [][2]float32, clockwise bool) [][2]float32 {
 
 	// Sort points based on angle to the bottom point
 	sort_points := points[1:]
-	debug("started sort")
-	sort_start := time.Now()
-	custom_sort(sort_points, bot_point, order)
+	// debug("started sort")
+	// sort_start := time.Now()
+	custom_sort(sort_points, bot_point, order, parallel_sort)
 	// go_sort(sort_points, bot_point, order)
-	debug("finished sort", time.Since(sort_start))
+	// debug("finished sort", time.Since(sort_start))
 
 	// Remove collinear points
 	new_index := 1
@@ -202,7 +205,17 @@ func seq_graham_scan(points [][2]float32) [][2]float32 {
 	if len(points) < 3 {
 		return points
 	}
-	hull := seq_graham_scan_run(points, false)
-	hull = seq_graham_scan_run(hull, true)
+	hull := graham_scan_run(points, false, false)
+	hull = graham_scan_run(hull, true, false)
+	return hull
+}
+
+// Run graham scan, use two passes because of float associativity
+func parallel_graham_scan(points [][2]float32) [][2]float32 {
+	if len(points) < 3 {
+		return points
+	}
+	hull := graham_scan_run(points, false, true)
+	hull = graham_scan_run(hull, true, true)
 	return hull
 }
