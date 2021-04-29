@@ -9,7 +9,7 @@ import (
 	"math"
 )
 
-var convex_hull map[[2]float32]bool
+var convex_hull map[int]bool
 
 //Counts line in a file
 func count_lines(file_str string) int {
@@ -89,24 +89,20 @@ func getSide(l1 [2]float32, l2 [2]float32, p [2]float32) int {
 }
 
 
-func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int){
+func hull(points[][2]float32, min_pt_index int, max_pt_index int, side int){
 	max_dist := float32(0.0)
 	ind := -1
 
-	new_points := make([][2]float32, 0)
+	max_pt := points[max_pt_index]
+	min_pt := points[min_pt_index]
 
 	for i := 0; i < len(points); i++{
 		pt := points[i]
 		dist := point_line_dist(min_pt, max_pt, pt)
 
-		correct_side := getSide(min_pt, max_pt, pt) == side
-		if (correct_side && dist > max_dist){
+		if (getSide(min_pt, max_pt, pt) == side && dist > max_dist){
 			ind = i
 			max_dist = dist
-		}
-
-		if (correct_side){
-			new_points = append(new_points, pt)
 		}
 	}
 
@@ -114,11 +110,10 @@ func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int){
 		//Add max, min
 		fmt.Println(max_pt)
 		fmt.Println(min_pt)
-		convex_hull[min_pt]=true
-		convex_hull[max_pt]=true
+		convex_hull[min_pt_index]=true
+		convex_hull[max_pt_index]=true
 	} else{
-		hull(new_points, points[ind], min_pt, -getSide(points[ind], min_pt, max_pt))
-		hull(new_points, points[ind], max_pt, -getSide(points[ind], max_pt, min_pt))
+		
 	}
 }
 
@@ -134,8 +129,11 @@ func quickhull(points [][2]float32){
 	max_pt[0] = points[res[1]][0]
 	max_pt[1] = points[res[1]][1]
 
-	hull(points, max_pt, min_pt, 1)
-	hull(points, max_pt, min_pt, -1)
+	max_pt_index := res[0]
+	min_pt_index := res[1]
+
+	hull(points, max_pt_index, min_pt_index, 1)
+	hull(points, max_pt_index, min_pt_index, -1)
 }
 
 func main() {
@@ -150,7 +148,7 @@ func main() {
 	points := make([][2]float32, num_lines, num_lines)
 	
 	i:=0
-	convex_hull = make(map[[2]float32]bool)
+	convex_hull = make(map[int]bool)
 	for scanner.Scan() {
         line := scanner.Text()
 		lst := strings.Split(line, ",")
@@ -164,7 +162,7 @@ func main() {
 		points[i][0] = x
 		points[i][1] = y
 
-		convex_hull[points[i]] = false
+		convex_hull[i] = false
 		i=i+1
 	}
 
@@ -174,7 +172,7 @@ func main() {
     defer f.Close()
 	
 	for i := 0; i < len(convex_hull); i++{
-		if (convex_hull[points[i]]){
+		if (convex_hull[i]){
 			fmt.Fprintf(f, "%f,%f\n", points[i][0], points[i][1])
 		}
 	}

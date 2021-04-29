@@ -7,9 +7,11 @@ import (
 	"strings"
 	"strconv"
 	"math"
+	"sync"
 )
 
 var convex_hull map[[2]float32]bool
+var hull_lock sync.Mutex
 
 //Counts line in a file
 func count_lines(file_str string) int {
@@ -89,7 +91,7 @@ func getSide(l1 [2]float32, l2 [2]float32, p [2]float32) int {
 }
 
 
-func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int){
+func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int, c chan int){
 	max_dist := float32(0.0)
 	ind := -1
 
@@ -112,13 +114,20 @@ func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int){
 
 	if (ind == -1){
 		//Add max, min
-		fmt.Println(max_pt)
-		fmt.Println(min_pt)
 		convex_hull[min_pt]=true
 		convex_hull[max_pt]=true
+		c <- 1
 	} else{
-		hull(new_points, points[ind], min_pt, -getSide(points[ind], min_pt, max_pt))
-		hull(new_points, points[ind], max_pt, -getSide(points[ind], max_pt, min_pt))
+
+		leftChan := make(chan int, 1)
+		rightChan := make(chan int, 1)
+
+		hull(new_points, points[ind], min_pt, -getSide(points[ind], min_pt, max_pt), leftChan)
+		hull(new_points, points[ind], max_pt, -getSide(points[ind], max_pt, min_pt), rightChan)
+
+		_ = <-leftChan
+		_ = <-rightChan
+		c <- 1
 	}
 }
 
@@ -134,8 +143,14 @@ func quickhull(points [][2]float32){
 	max_pt[0] = points[res[1]][0]
 	max_pt[1] = points[res[1]][1]
 
-	hull(points, max_pt, min_pt, 1)
-	hull(points, max_pt, min_pt, -1)
+	leftChan := make(chan int, 1)
+	rightChan := make(chan int, 1)
+
+	hull(points, max_pt, min_pt, 1, leftChan)
+	hull(points, max_pt, min_pt, -1, rightChan)
+
+	_ = <-leftChan
+	_ = <-rightChan
 }
 
 func main() {
