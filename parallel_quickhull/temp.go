@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-var convex_hull map[[2]float32]bool
+var convex_hull [][2]float32
 var hull_lock sync.Mutex
 
 //Counts line in a file
@@ -26,34 +26,33 @@ func count_lines(file_str string) int {
 	return count
 }
 
-func getMaxMinPt(points [][2]float32) [2]int {
+func getMaxMinPt(points [][2]float32) [2][2]float32 {
 
 	max_pt_x := float32(-math.MaxFloat32)
 	max_pt_y := float32(-math.MaxFloat32)
-	max_pt_ind := -1
 
 	min_pt_x := float32(math.MaxFloat32)
 	min_pt_y := float32(math.MaxFloat32)
-	min_pt_ind := -1
 
 	for i := 0; i < len(points); i++{
 		pt := points[i]
 		if (pt[0] > max_pt_x || (pt[0] == max_pt_x && pt[1] > max_pt_y)){
 			max_pt_x = pt[0];
 			max_pt_y = pt[1];
-			max_pt_ind = i
 		}
 
 		if (pt[0] < min_pt_x || (pt[0] == min_pt_x && pt[1] < min_pt_y)){
 			min_pt_x = pt[0];
 			min_pt_y = pt[1];
-			min_pt_ind = i
 		}
 	}
 
-	var res [2]int
-	res[0] = max_pt_ind
-	res[1] = min_pt_ind
+	var res [2][2]float32
+	res[0][0] = max_pt_x
+	res[0][1] = max_pt_y
+
+	res[1][0] = min_pt_x
+	res[1][1] = min_pt_y
 
 	return res
 }
@@ -78,57 +77,73 @@ func point_line_dist(l1 [2]float32, l2 [2]float32, pt [2]float32) float32{
     return float32(num/den)
 }
 
-func getSide(l1 [2]float32, l2 [2]float32, p [2]float32) int {
+func side_of_line_point_is(l1 [2]float32, l2 [2]float32, p [2]float32) float32{
 	AB := []float32{l2[0]-l1[0], l2[1]-l1[1]}
 	AX := []float32{p[0]-l1[0], p[1]-l1[1]}
 	cross := AB[0] * AX[1] - AB[1] * AX[0]
-	if (cross > 0){
-		return 1
-	} else if (cross < 0){
-		return -1
-	}
-	return 0
+	return cross
 }
 
+func isInsideTriangle(A [2]float32, B [2]float32, C [2]float32, pt [2]float32) bool{
+	if ((side_of_line_point_is(A,B,pt) < 0) && (side_of_line_point_is(B,C,pt) < 0) && (side_of_line_point_is(C,A,pt) < 0)){
+		return true
+	}
+	return false
+}
 
-func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int, c chan int){
-	max_dist := float32(0.0)
-	ind := -1
-
-	new_points := make([][2]float32, 0)
+func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, c chan int){
+	fmt.Println(points)
+	if (len(points) == 0){
+		c <- 1
+		return
+	}
+	max_dist := float32(-1.0)
+	var furthest_pt [2]float32;
+	furthest_index := -1
 
 	for i := 0; i < len(points); i++{
 		pt := points[i]
 		dist := point_line_dist(min_pt, max_pt, pt)
-
-		correct_side := getSide(min_pt, max_pt, pt) == side
-		if (correct_side && dist > max_dist){
-			ind = i
+		if (dist > max_dist){
 			max_dist = dist
-		}
-
-		if (correct_side){
-			new_points = append(new_points, pt)
+			furthest_pt[0] = pt[0]
+			furthest_pt[1] = pt[1]
+			furthest_index = i
 		}
 	}
 
-	if (ind == -1){
-		//Add max, min
-		convex_hull[min_pt]=true
-		convex_hull[max_pt]=true
-		c <- 1
-	} else{
+	hull_lock.Lock()
+	points = append(points[:furthest_index], points[furthest_index + 1:]...)
+	convex_hull = append(convex_hull, furthest_pt)
+	hull_lock.Unlock()
 
-		leftChan := make(chan int, 1)
-		rightChan := make(chan int, 1)
+	L1 := make([][2]float32, 0, 0)
+	L2 := make([][2]float32, 0, 0)
 
-		hull(new_points, points[ind], min_pt, -getSide(points[ind], min_pt, max_pt), leftChan)
-		hull(new_points, points[ind], max_pt, -getSide(points[ind], max_pt, min_pt), rightChan)
+	for i := 0; i < len(points); i++{
+		var pt [2]float32
+		pt[0] = points[i][0]
+		pt[1] = points[i][1]
 
-		_ = <-leftChan
-		_ = <-rightChan
-		c <- 1
+		if (isInsideTriangle(min_pt, furthest_pt, max_pt, pt)){
+			//Cannot be part of hull
+		} else if (side_of_line_point_is(min_pt, furthest_pt, pt) > 0){
+			L1 = append(L1, pt)
+		} else if (side_of_line_point_is(min_pt, furthest_pt, pt) < 0){
+			L2 = append(L2, pt)
+		}
 	}
+
+	leftChan := make(chan int, 1)
+	rightChan := make(chan int, 1)
+
+	go hull(L1, furthest_pt,max_pt,leftChan)
+    go hull(L2, min_pt, furthest_pt,rightChan)
+
+	_ = <-leftChan
+	_ = <-rightChan
+
+	c <- 1
 }
 
 func quickhull(points [][2]float32){
@@ -137,17 +152,36 @@ func quickhull(points [][2]float32){
 	var min_pt [2]float32
 	var max_pt [2]float32
 
-	min_pt[0] = points[res[0]][0]
-	min_pt[1] = points[res[0]][1]
+	min_pt[0] = res[1][0]
+	min_pt[1] = res[1][1]
 
-	max_pt[0] = points[res[1]][0]
-	max_pt[1] = points[res[1]][1]
+	max_pt[0] = res[0][0]
+	max_pt[1] = res[0][1]
+
+	convex_hull = append(convex_hull, min_pt)
+	convex_hull = append(convex_hull, max_pt)
+
+	above_pts := make([][2]float32, 0, 0)
+	below_pts := make([][2]float32, 0, 0)
+
+	for i := 0; i < len(points); i++{
+		var pt [2]float32
+		pt[0] = points[i][0]
+		pt[1] = points[i][1]
+
+		is_abv := is_above(min_pt, max_pt, pt)
+		if is_abv > 0 {
+			above_pts = append(above_pts, pt)
+		}else if is_abv < 0 {
+			below_pts = append(below_pts, pt)
+		}
+	}
 
 	leftChan := make(chan int, 1)
 	rightChan := make(chan int, 1)
 
-	hull(points, max_pt, min_pt, 1, leftChan)
-	hull(points, max_pt, min_pt, -1, rightChan)
+	go hull(above_pts, min_pt, max_pt,leftChan)
+	go hull(below_pts, max_pt, min_pt,rightChan)
 
 	_ = <-leftChan
 	_ = <-rightChan
@@ -165,7 +199,6 @@ func main() {
 	points := make([][2]float32, num_lines, num_lines)
 	
 	i:=0
-	convex_hull = make(map[[2]float32]bool)
 	for scanner.Scan() {
         line := scanner.Text()
 		lst := strings.Split(line, ",")
@@ -179,7 +212,6 @@ func main() {
 		points[i][0] = x
 		points[i][1] = y
 
-		convex_hull[points[i]] = false
 		i=i+1
 	}
 
@@ -187,10 +219,8 @@ func main() {
 
 	f, _ := os.Create("parallel_qh_hull.txt")
     defer f.Close()
-	
+
 	for i := 0; i < len(convex_hull); i++{
-		if (convex_hull[points[i]]){
-			fmt.Fprintf(f, "%f,%f\n", points[i][0], points[i][1])
-		}
+		fmt.Fprintf(f, "%f,%f\n", convex_hull[i][0], convex_hull[i][1])
 	}
 }
