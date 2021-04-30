@@ -1,20 +1,28 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"os"
 	"flag"
+	"fmt"
+	"os"
+	"time"
 )
 
 // Run convex hull using algorithm: method
 func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name string, trials int, save_time bool, result_file string) {
 	time_total := int64(0)
-	for i := 0; i < trials; i++{
+	points_copy := make([][2]float32, len(points))
+
+	for i := 0; i < trials; i++ {
+		// Copy because graham's will modify - next run will be O(N^2) quicksort otherwise
+		copy(points_copy, points)
+
+		fmt.Println()
 		fn_start := time.Now()
-		hull := method(points)
-		//fmt.Println("points on hull:", len(hull))
-		//fmt.Println(name, time.Since(fn_start))
+		hull := method(points_copy)
+		elapsed := time.Since(fn_start)
+		fmt.Println(fmt.Sprintf("%s points on hull:", name), len(hull))
+		fmt.Println(name, elapsed)
+
 		ns_elap := time.Since(fn_start).Nanoseconds()
 		time_total += (ns_elap)
 		// Write hull to output
@@ -22,10 +30,10 @@ func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name 
 	}
 	avg_time := float64(time_total) / float64(trials)
 
-	if (save_time){
+	if save_time {
 		fmt.Println("Saving at ", result_file)
 		f, _ := os.Create(result_file)
-    	defer f.Close()
+		defer f.Close()
 		fmt.Fprintf(f, "%f\n", avg_time)
 	}
 }
@@ -75,18 +83,18 @@ func main() {
 	points := parse_file(*inputPtr)
 
 	// Run jarvis march
-	run_hull(points, seq_jarvis, "serial_jarvis",*num_trials_ptr, save_time, *result_dir_ptr + "/serial_jarvis.txt")
+	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_jarvis.txt")
 
 	// Run graham scan
-	a := make([][2]float32, len(points))
-	copy(a, points)
-	run_hull(a, seq_graham_scan, "serial_graham",*num_trials_ptr, save_time, *result_dir_ptr + "/serial_graham.txt")
+	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_graham.txt")
+	run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_graham.txt")
 
 	// Run chan's
-	run_hull(points, seq_chans, "serial_chans",*num_trials_ptr, save_time, *result_dir_ptr + "/serial_chan.txt")
+	run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_chan.txt")
+	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_chan.txt")
 
 	// Run quickhull
-	run_hull(points, quickhull, "serial_qh",*num_trials_ptr, save_time, *result_dir_ptr + "/serial_qh.txt")
+	run_hull(points, quickhull, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
 
 	output_points("input.txt", points)
 }
