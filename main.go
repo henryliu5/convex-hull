@@ -82,6 +82,11 @@ func main() {
 	save_time := (*result_dir_ptr != "")
 	points := parse_file(*inputPtr)
 
+	if len(points) == 0 {
+		fmt.Printf("file: %s not found!\n", *inputPtr)
+		return
+	}
+
 	// Run jarvis march
 	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_jarvis.txt")
 
@@ -96,5 +101,5 @@ func main() {
 	// Run quickhull
 	run_hull(points, quickhull, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
 
-	output_points("input.txt", points)
+	// output_points("input.txt", points)
 }

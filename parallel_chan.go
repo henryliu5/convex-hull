@@ -35,9 +35,15 @@ func thread_pool_subhull(points [][2]float32, group_size, n int, subhulls [][2]f
 		go subhull_worker(work_ch, result_ch, &wg)
 	}
 
+	num_subhulls := (n + group_size - 1) / group_size
+
+	manager_wg := sync.WaitGroup{}
+	manager_wg.Add(1)
 	manager := func() {
 		// Central manager to collect subhulls from workers
-		for subhull := range result_ch {
+		for i := 0; i < num_subhulls; i++ {
+			subhull := <-result_ch
+			// for subhull := range result_ch {
 			subhull_start := time.Now()
 			subhull_compute += time.Since(subhull_start)
 
@@ -48,12 +54,12 @@ func thread_pool_subhull(points [][2]float32, group_size, n int, subhulls [][2]f
 			subhull_sizes = append(subhull_sizes, len(subhull))
 			subhull_append += time.Since(append_start)
 		}
+		manager_wg.Done()
 	}
 
 	go manager()
 
 	// Run graham scan on subgroups of points
-	num_subhulls := 0
 	for start := 0; start < n; start += group_size {
 		end := start + group_size
 		if n < end {
@@ -62,17 +68,15 @@ func thread_pool_subhull(points [][2]float32, group_size, n int, subhulls [][2]f
 		// Compute convex hull of subgroup using graham-scan
 		// go subhull_worker(points[start:end], ch)
 		work_ch <- points[start:end]
-		num_subhulls += 1
 	}
 
 	// Finished sending work
 	close(work_ch)
 	// Wait for workers to complete
 	wg.Wait()
-	// All work has been completed and sent, close result channel
-	close(result_ch)
+	manager_wg.Wait()
 
-	// debug("-------", num_subhulls, (n+group_size-1)/group_size)
+	// fmt.Println("-------", num_subhulls, (n+group_size-1)/group_size)
 	debug("subhull point count", len(subhulls))
 	debug("chan's subgroups compute", subhull_compute)
 	debug("chan's subgroups append", subhull_append)
@@ -134,40 +138,48 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 	subhull_sizes := make([]int, 0, n/(1<<(1<<t))+1)
 	debug("initial allocation time", time.Since(start))
 
+	ch := make(chan [][2]float32)
 	for {
-		subhulls = subhulls[:0]
-		subhull_sizes = subhull_sizes[:0]
+		iteration := func(cur_t uint) {
+			subhulls = subhulls[:0]
+			subhull_sizes = subhull_sizes[:0]
 
-		// Try out group size
-		group_size := 1 << (1 << t)
-		if group_size == 0 {
-			fmt.Println("chan's failed, too many iterations")
-			return nil
+			// Try out group size
+			group_size := 1 << (1 << cur_t)
+			if group_size == 0 {
+				fmt.Println("chan's failed, too many iterations")
+				ch <- nil
+			}
+			debug("current group size", group_size)
+			if n < group_size {
+				group_size = n
+			}
+
+			/***********************
+			 * Subhull computation *
+			 ***********************/
+			subhull_start := time.Now()
+			// subhulls, subhull_sizes = basic_par_subhull(points, group_size, n, subhulls, subhull_sizes)
+			subhulls, subhull_sizes = thread_pool_subhull(points, group_size, n, subhulls, subhull_sizes)
+			debug("chan's subgroups total", time.Since(subhull_start))
+
+			/****************************************
+			 * Jarvis March (gift wrap) of subhulls *
+			 ****************************************/
+			march_start := time.Now()
+			var hull [][2]float32
+			// Jarvis march meant for Chan's algorithm, should use bsearch
+			// TODO parallelize this somehow
+			hull = subhull_jarvis(subhulls, subhull_sizes, group_size)
+			debug("march time", time.Since(march_start))
+
+			// if hull != nil {
+			ch <- hull
+			// }
 		}
-		debug("current group size", group_size)
-		if n < group_size {
-			group_size = n
-		}
-
-		/***********************
-		 * Subhull computation *
-		 ***********************/
-		subhull_start := time.Now()
-		// subhulls, subhull_sizes = basic_par_subhull(points, group_size, n, subhulls, subhull_sizes)
-		subhulls, subhull_sizes = thread_pool_subhull(points, group_size, n, subhulls, subhull_sizes)
-
-		debug("chan's subgroups total", time.Since(subhull_start))
-
-		/****************************************
-		 * Jarvis March (gift wrap) of subhulls *
-		 ****************************************/
-		march_start := time.Now()
-		var hull [][2]float32
-		// Jarvis march meant for Chan's algorithm, should use bsearch
-		// TODO parallelize this somehow
-		hull = subhull_jarvis(subhulls, subhull_sizes, group_size)
-		debug("march time", time.Since(march_start))
-
+		// TODO do multiple kinda stupid rn
+		go iteration(t)
+		hull := <-ch
 		if hull != nil {
 			return hull
 		}
