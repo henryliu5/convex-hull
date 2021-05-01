@@ -124,8 +124,6 @@ func basic_par_subhull(points [][2]float32, group_size, n int, subhulls [][2]flo
 	return subhulls, subhull_sizes
 }
 
-// // TODO make this properly limited.... thread pool?
-
 // Parallel Chan's algorithm O(nlogh)
 func parallel_chans(points [][2]float32) [][2]float32 {
 	n := len(points)
@@ -173,17 +171,24 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 			hull = subhull_jarvis(subhulls, subhull_sizes, group_size)
 			debug("march time", time.Since(march_start))
 
-			// if hull != nil {
 			ch <- hull
-			// }
 		}
-		// TODO do multiple kinda stupid rn
-		go iteration(t)
-		hull := <-ch
-		if hull != nil {
-			return hull
+
+		// Conduct multiple iterations at once
+		simul_iters := 2
+		for i := 0; i < simul_iters; i++ {
+			go iteration(t + uint(i))
 		}
+
+		// See if any of the iterations were succesful
+		for i := 0; i < simul_iters; i++ {
+			hull := <-ch
+			if hull != nil {
+				return hull
+			}
+		}
+
 		// Group size too small
-		t++
+		t += uint(simul_iters)
 	}
 }
