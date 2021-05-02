@@ -36,6 +36,12 @@ func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name 
 		defer f.Close()
 		fmt.Fprintf(f, "%f\n", avg_time)
 	}
+
+	if write_sort_time {
+		f, _ := os.OpenFile("time_"+write_sort_path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		defer f.Close()
+		fmt.Fprintf(f, "%f\n", avg_time*1e-9)
+	}
 }
 
 func main() {
@@ -87,21 +93,21 @@ func main() {
 		return
 	}
 
-	// Run jarvis march
-	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_jarvis.txt")
-	// run_hull(points, naive_parallel_jarvis, "naive_parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/naive_parallel_jarvis.txt")
-	run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_jarvis.txt")
+	// // Run jarvis march
+	// run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_jarvis.txt")
+	// // run_hull(points, naive_parallel_jarvis, "naive_parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/naive_parallel_jarvis.txt")
+	// run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_jarvis.txt")
 
-	// Run graham scan
-	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_graham.txt")
+	// // Run graham scan
+	// run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_graham.txt")
 	run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_graham.txt")
 
-	// Run chan's
-	run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_chan.txt")
-	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_chan.txt")
+	// // Run chan's
+	// run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_chan.txt")
+	// run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_chan.txt")
 
-	// Run quickhull
-	run_hull(points, quickhull, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
+	// // Run quickhull
+	// run_hull(points, quickhull, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
 
 	// output_points("input.txt", points)
 }

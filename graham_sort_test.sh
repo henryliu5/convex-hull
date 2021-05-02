@@ -1,0 +1,5 @@
+./runner -input="./uni_1000000.txt" -result_dir="./save"
+./runner -input="./uni_2000000.txt" -result_dir="./save"
+./runner -input="./uni_4000000.txt" -result_dir="./save"
+./runner -input="./uni_8000000.txt" -result_dir="./save"
+./runner -input="./uni_16000000.txt" -result_dir="./save"

@@ -1,12 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"os"
 	"sort"
 	"sync"
+	"time"
 )
 
 var PAR_QUICKSORT_LIMIT int = 2000
+var write_sort_time bool = true
+var write_sort_path string = "sort_time.txt"
 
 // Parallel quicksort
 func parallel_qsort(a [][2]float32, cmp func([2]float32, [2]float32) bool, wg *sync.WaitGroup) {
@@ -165,10 +170,16 @@ func graham_scan_run(points [][2]float32, clockwise, parallel_sort bool) [][2]fl
 	// Sort points based on angle to the bottom point
 	sort_points := points[1:]
 	// debug("started sort")
-	// sort_start := time.Now()
-	custom_sort(sort_points, bot_point, order, parallel_sort)
-	// go_sort(sort_points, bot_point, order)
-	// debug("finished sort", time.Since(sort_start))
+	sort_start := time.Now()
+	// custom_sort(sort_points, bot_point, order, false)
+	go_sort(sort_points, bot_point, order)
+	sort_time := time.Since(sort_start)
+	debug("finished sort", time.Since(sort_start))
+	if write_sort_time && len(points) >= 1000000 {
+		f, _ := os.OpenFile(write_sort_path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		defer f.Close()
+		fmt.Fprintf(f, "%f\n", sort_time.Seconds())
+	}
 
 	// Remove collinear points
 	new_index := 1
