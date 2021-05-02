@@ -8,7 +8,7 @@ import (
 )
 
 // Run convex hull using algorithm: method
-func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name string, trials int, save_time bool, result_file string) {
+func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name string, trials int, save_time bool, result_file string, variable_of_interest string) {
 	time_total := int64(0)
 	points_copy := make([][2]float32, len(points))
 
@@ -32,9 +32,9 @@ func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name 
 
 	if save_time {
 		fmt.Println("Saving at ", result_file)
-		f, _ := os.Create(result_file)
+		f, _ := os.OpenFile(result_file, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		defer f.Close()
-		fmt.Fprintf(f, "%f\n", avg_time)
+		fmt.Fprintf(f, "%s %d %f %s\n", name, trials, avg_time, variable_of_interest)
 	}
 }
 
@@ -74,12 +74,14 @@ func main() {
 	 * Points from file *
 	 ********************/
 
-	result_dir_ptr := flag.String("result_dir", "", "result directory location")
+	result_file_ptr := flag.String("result_file", "", "result file location")
 	inputPtr := flag.String("input", "./serial_quickhull/input_points.txt", "input file location")
 	num_trials_ptr := flag.Int("trials", 1, "number of trials")
+	//Pass something like number of points if you want it to be recorded in the data for later visualization
+	variable_of_interest := flag.String("voi", "", "variable of interest to be recorded in data")
 	flag.Parse()
 
-	save_time := (*result_dir_ptr != "")
+	save_time := (*result_file_ptr != "")
 	points := parse_file(*inputPtr)
 
 	if len(points) == 0 {
@@ -88,21 +90,21 @@ func main() {
 	}
 
 	// Run jarvis march
-	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_jarvis.txt")
+	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
 	// run_hull(points, naive_parallel_jarvis, "naive_parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/naive_parallel_jarvis.txt")
-	run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_jarvis.txt")
+	run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
 
 	// Run graham scan
-	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_graham.txt")
-	run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_graham.txt")
+	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
+	run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
 
 	// Run chan's
-	run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_chan.txt")
-	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_chan.txt")
+	run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
+	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
 
 	// Run quickhull
-	run_hull(points, quickhull_serial, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
-	run_hull(points, quickhull_parallel, "parallel_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_qh.txt")
+	run_hull(points, quickhull_serial, "serial_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
+	run_hull(points, quickhull_parallel, "parallel_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest)
 
 	// output_points("input.txt", points)
 }
