@@ -101,7 +101,8 @@ func main() {
 	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_chan.txt")
 
 	// Run quickhull
-	run_hull(points, quickhull, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
+	run_hull(points, quickhull_serial, "serial_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_qh.txt")
+	run_hull(points, quickhull_parallel, "parallel_qh", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_qh.txt")
 
 	// output_points("input.txt", points)
 }

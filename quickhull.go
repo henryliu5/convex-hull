@@ -3,9 +3,11 @@ import (
 	"os"
 	"bufio"
 	"math"
+	"sync"
 )
 
 var convex_hull map[[2]float32]bool
+var hull_lock sync.Mutex
 
 //Counts line in a file
 func count_lines(file_str string) int {
@@ -116,7 +118,7 @@ func hull(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int){
 	}
 }
 
-func quickhull_inner(points [][2]float32){
+func quickhull(points [][2]float32){
 	res := getMaxMinPt(points)
 
 	var min_pt [2]float32
@@ -132,20 +134,103 @@ func quickhull_inner(points [][2]float32){
 	hull(points, max_pt, min_pt, -1)
 }
 
-func quickhull(points [][2]float32) [][2]float32 {
-	
+func hull_p(points[][2]float32, min_pt [2]float32, max_pt [2]float32, side int, c chan int){
+	max_dist := float32(0.0)
+	ind := -1
+
+	new_points := make([][2]float32, 0)
+
+	for i := 0; i < len(points); i++{
+		pt := points[i]
+		dist := point_line_dist(min_pt, max_pt, pt)
+
+		correct_side := getSide(min_pt, max_pt, pt) == side
+		if (correct_side && dist > max_dist){
+			ind = i
+			max_dist = dist
+		}
+
+		if (correct_side){
+			new_points = append(new_points, pt)
+		}
+	}
+
+	if (ind == -1){
+		//Add max, min
+		hull_lock.Lock()
+		convex_hull[min_pt]=true
+		convex_hull[max_pt]=true
+		hull_lock.Unlock()
+		c <- 1
+	} else{
+
+		leftChan := make(chan int, 1)
+		rightChan := make(chan int, 1)
+
+		go hull_p(new_points, points[ind], min_pt, -getSide(points[ind], min_pt, max_pt), leftChan)
+		go hull_p(new_points, points[ind], max_pt, -getSide(points[ind], max_pt, min_pt), rightChan)
+
+		_ = <-leftChan
+		_ = <-rightChan
+		c <- 1
+	}
+}
+
+func quickhull_p(points [][2]float32){
+	res := getMaxMinPt(points)
+
+	var min_pt [2]float32
+	var max_pt [2]float32
+
+	min_pt[0] = points[res[0]][0]
+	min_pt[1] = points[res[0]][1]
+
+	max_pt[0] = points[res[1]][0]
+	max_pt[1] = points[res[1]][1]
+
+	leftChan := make(chan int, 1)
+	rightChan := make(chan int, 1)
+
+	go hull_p(points, max_pt, min_pt, 1, leftChan)
+	go hull_p(points, max_pt, min_pt, -1, rightChan)
+
+	_ = <-leftChan
+	_ = <-rightChan
+}
+
+func quickhull_serial(points [][2]float32) [][2]float32{
+
 	convex_hull = make(map[[2]float32]bool)
-	for i := 0; i < len(points); i++ {
+	for i := 0; i < len(points); i++{
+		convex_hull[points[i]] = false
+	}
+	
+	quickhull(points)
+
+	hull_res := make([][2]float32,0)
+	
+	for i := 0; i < len(convex_hull); i++{
+		if (convex_hull[points[i]]){
+			hull_res = append(hull_res,points[i])
+		}
+	}
+	return hull_res
+}
+
+func quickhull_parallel(points [][2]float32) [][2]float32 {
+	convex_hull = make(map[[2]float32]bool)
+	for i := 0; i < len(points); i++{
 		convex_hull[points[i]] = false
 	}
 
-	quickhull_inner(points)
+	quickhull_p(points)
 
-	hull := make([][2]float32,0)
+	hull_res := make([][2]float32,0)
+	
 	for i := 0; i < len(convex_hull); i++{
 		if (convex_hull[points[i]]){
-			hull = append(hull, points[i])
+			hull_res = append(hull_res,points[i])
 		}
 	}
-	return hull
+	return hull_res
 }
