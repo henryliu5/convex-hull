@@ -89,6 +89,8 @@ func main() {
 
 	// Run jarvis march
 	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_jarvis.txt")
+	// run_hull(points, naive_parallel_jarvis, "naive_parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/naive_parallel_jarvis.txt")
+	run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/parallel_jarvis.txt")
 
 	// Run graham scan
 	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_dir_ptr+"/serial_graham.txt")

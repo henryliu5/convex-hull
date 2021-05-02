@@ -33,6 +33,45 @@ func leftmost(points [][2]float32) int {
 	return index
 }
 
+// Get index of rightmost point
+func rightmost(points [][2]float32) int {
+	var max float32 = -1 * math.MaxFloat32
+	index := -1
+	for i, point := range points {
+		if point[0] > max {
+			index = i
+			max = point[0]
+		}
+	}
+	return index
+}
+
+// Get index of lowest point
+func lowest(points [][2]float32) int {
+	var min float32 = math.MaxFloat32
+	index := -1
+	for i, point := range points {
+		if point[1] < min {
+			index = i
+			min = point[1]
+		}
+	}
+	return index
+}
+
+// Get index of highest point
+func highest(points [][2]float32) int {
+	var max float32 = -1 * math.MaxFloat32
+	index := -1
+	for i, point := range points {
+		if point[1] > max {
+			index = i
+			max = point[1]
+		}
+	}
+	return index
+}
+
 // Distance between two points
 func dist(a, b [2]float32) float64 {
 	x := a[0] - b[0]
@@ -42,7 +81,7 @@ func dist(a, b [2]float32) float64 {
 
 func debug(a ...interface{}) {
 	// change this to switch on/off
-	if false {
+	if true {
 		fmt.Println(a...)
 	}
 }

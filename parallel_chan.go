@@ -66,7 +66,6 @@ func thread_pool_subhull(points [][2]float32, group_size, n int, subhulls [][2]f
 			end = n
 		}
 		// Compute convex hull of subgroup using graham-scan
-		// go subhull_worker(points[start:end], ch)
 		work_ch <- points[start:end]
 	}
 
@@ -127,8 +126,8 @@ func basic_par_subhull(points [][2]float32, group_size, n int, subhulls [][2]flo
 // Parallel Chan's algorithm O(nlogh)
 func parallel_chans(points [][2]float32) [][2]float32 {
 	n := len(points)
+	tangent_time = 0
 
-	// TODO try running different iterations in parallel
 	var t uint
 	t = 3 // Init group size as 2^2^3 = 256
 	start := time.Now()
@@ -184,6 +183,8 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 		for i := 0; i < simul_iters; i++ {
 			hull := <-ch
 			if hull != nil {
+				debug("tangent time", tangent_time)
+				debug("leftmost time", leftmost_time)
 				return hull
 			}
 		}
