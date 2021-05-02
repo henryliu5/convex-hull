@@ -5,8 +5,12 @@ import (
 	"time"
 )
 
+var tangent_time time.Duration
+var leftmost_time time.Duration
+
 // Find point on this convex subhull that is as left as possible from point p (p must not be inside the subhull)
 func basic_tangent(subhull [][2]float32, p [2]float32) [2]float32 {
+	start := time.Now()
 	endpoint := 0
 	// Look through this subhull
 	for i := 1; i < len(subhull); i++ {
@@ -19,6 +23,7 @@ func basic_tangent(subhull [][2]float32, p [2]float32) [2]float32 {
 			endpoint = i
 		}
 	}
+	tangent_time += time.Since(start)
 	return subhull[endpoint]
 }
 
@@ -52,6 +57,7 @@ func subhull_jarvis(points [][2]float32, subhull_sizes []int, group_size int) []
 
 		// Find leftmost endpoint out of all of the subhulls
 		endpoint := 0
+		leftmost_search_start := time.Now()
 		for candidate := range candidates {
 			cross := cross_prod(cur_p, candidates[endpoint], candidates[candidate])
 			if (candidates[endpoint][0] == cur_p[0] && candidates[endpoint][1] == cur_p[1]) || cross > 0 {
@@ -64,6 +70,7 @@ func subhull_jarvis(points [][2]float32, subhull_sizes []int, group_size int) []
 				}
 			}
 		}
+		leftmost_time += time.Since(leftmost_search_start)
 		cur_p = candidates[endpoint]
 
 		// Circled back to original point
