@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"sync"
 )
 
@@ -35,8 +36,9 @@ func (sm *SafeMap) init(size int) {
 	sm.size = size
 }
 
+// Hash function for a coordinate (kinda sus)
 func hash(key [2]float32) int {
-	return int(key[0])
+	return int(math.Abs(float64(key[0])))
 }
 
 // Insert a key into the map
@@ -84,7 +86,7 @@ func (sm *SafeMap) put(key [2]float32, value [2]float32) {
 // Find a entry in a bucket - return nil if does not exist
 func findEntry(bucket *Bucket, key [2]float32) *Entry {
 	entry := bucket.entry
-	for entry != nil && entry.key != key {
+	for entry != nil && !(entry.key[0] == key[0] && entry.key[1] == key[1]) {
 		entry = entry.next
 	}
 	return entry
@@ -108,15 +110,21 @@ func addEntry(bucket *Bucket, key [2]float32, value [2]float32) {
 }
 
 // NOT concurrent
-func (sm *SafeMap) get(key [2]float32) [2]float32 {
+func (sm *SafeMap) get(key [2]float32) []float32 {
 	bucketNum := hash(key) % sm.size
 	rwLock := sm.con[bucketNum].mutex
 	rwLock.RLock()
 	entry := findEntry(&sm.con[bucketNum], key)
-	var res [2]float32
-	entry.mutex.Lock()
-	res = entry.value
-	entry.mutex.Unlock()
+	var res []float32
+
+	if entry != nil {
+		entry.mutex.Lock()
+		res = entry.value[0:2]
+		entry.mutex.Unlock()
+	} else {
+		res = nil
+	}
+
 	rwLock.RUnlock()
 	return res
 }

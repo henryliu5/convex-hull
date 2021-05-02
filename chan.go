@@ -9,12 +9,12 @@ var tangent_time time.Duration
 var leftmost_time time.Duration
 
 // Find point on this convex subhull that is as left as possible from point p (p must not be inside the subhull)
-func basic_tangent(subhull [][2]float32, p [2]float32) [2]float32 {
+func find_tangent(subhull [][2]float32, p [2]float32, order float32) [2]float32 {
 	start := time.Now()
 	endpoint := 0
 	// Look through this subhull
 	for i := 1; i < len(subhull); i++ {
-		cross := cross_prod(p, subhull[endpoint], subhull[i])
+		cross := cross_prod(p, subhull[endpoint], subhull[i]) * order
 		if (subhull[endpoint][0] == p[0] && subhull[endpoint][1] == p[1]) || cross > 0 {
 			// New point is to the left of current endpoint
 			endpoint = i
@@ -27,10 +27,39 @@ func basic_tangent(subhull [][2]float32, p [2]float32) [2]float32 {
 	return subhull[endpoint]
 }
 
-// TODO Use binary search to find tangent point of a subhull instead of using O(n) scan above ^^
-// p: reference point for tangent
-func binary_search_tangent(subhull [][2]float32, p [2]float32) int {
-	return -1
+// Works for negatives
+func mod(a, b int) int {
+	return (a%b + b) % b
+}
+
+func tangent2(subhull [][2]float32, p [2]float32, order float32) [2]float32 {
+	if len(subhull) < 3 {
+		return find_tangent(subhull, p, order)
+	}
+	l := 0
+	r := len(subhull)
+	n := len(subhull)
+	l_up := cross_prod(p, subhull[l], subhull[(l+1)%n])
+	l_down := cross_prod(p, subhull[l], subhull[mod(l-1, n)])
+	for l < r {
+
+		mid := l + (r-l)/2
+		mid_up := cross_prod(p, subhull[mid], subhull[(mid+1)%n])
+		mid_down := cross_prod(p, subhull[mid], subhull[(mid-1)%n])
+		left_mid := cross_prod(p, subhull[l], subhull[mid])
+		if mid_up < 0 && mid_down < 0 {
+			return subhull[mid]
+		}
+		if (left_mid > 0) && (l_up < 0 || l_down == l_up) || (left_mid < 0 && mid_down < 0) {
+			r = mid
+		} else {
+			l = mid + 1
+		}
+
+		l_down = -mid_up
+		l_up = cross_prod(p, subhull[l], subhull[(l+1)%n])
+	}
+	return subhull[l]
 }
 
 // Jarvis march on subhulls
@@ -50,8 +79,7 @@ func subhull_jarvis(points [][2]float32, subhull_sizes []int, group_size int) []
 		for i := 0; i < n_subhulls; i++ {
 			start := subhull_index
 			end := subhull_index + subhull_sizes[i]
-			// TODO replace this with binary search for tangent
-			candidates[i] = basic_tangent(points[start:end], cur_p)
+			candidates[i] = find_tangent(points[start:end], cur_p, 1.0)
 			subhull_index += subhull_sizes[i]
 		}
 

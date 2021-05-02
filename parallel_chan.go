@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -123,6 +124,101 @@ func basic_par_subhull(points [][2]float32, group_size, n int, subhulls [][2]flo
 	return subhulls, subhull_sizes
 }
 
+// Parallel Jarvis march to wrap subhulls
+// 	Goes both left and right from start position in parallel
+// 	Tracks global state w atomic counter and concurrent hash map
+func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_size int) [][2]float32 {
+	var hull [][2]float32
+	n_subhulls := len(subhull_sizes)
+
+	// Use a concurrent hashmap to track which points have been selected
+	selected := SafeMap{}
+	selected.init(len(points) / 4)
+
+	// Leftmost point starts as first point on hull
+	left := leftmost(points)
+
+	wg := sync.WaitGroup{}
+	failed := false
+
+	// Track total steps taken by all workers with atomic counter
+	var steps uint64
+
+	// Worker to wrap subhulls from start point
+	find_hull := func(start int, order float32) {
+		candidates := make([][2]float32, n_subhulls)
+		cur_p := points[start]
+		// If need to add more points than the group size, retry with different group size
+		for {
+			// fmt.Println("cur", order, cur_p)
+			selected.put(cur_p, [2]float32{1.0, 1.0})
+			subhull_index := 0
+			// Compute the tangent point for each of the subhulls
+			for i := 0; i < n_subhulls; i++ {
+				start := subhull_index
+				end := subhull_index + subhull_sizes[i]
+				candidates[i] = find_tangent(points[start:end], cur_p, order)
+				subhull_index += subhull_sizes[i]
+			}
+
+			// Find leftmost endpoint out of all of the subhulls
+			endpoint := 0
+			leftmost_search_start := time.Now()
+			for candidate := range candidates {
+				cross := cross_prod(cur_p, candidates[endpoint], candidates[candidate]) * order
+				if (candidates[endpoint][0] == cur_p[0] && candidates[endpoint][1] == cur_p[1]) || cross > 0 {
+					// New point is to the left of current endpoint
+					endpoint = candidate
+				} else if cross == 0 && dist(cur_p, candidates[candidate]) >= dist(cur_p, candidates[endpoint]) {
+					if dist(cur_p, points[candidate]) == dist(cur_p, points[endpoint]) && endpoint != left {
+						// New point is collinear but further than current endpoint
+						endpoint = candidate
+					}
+				}
+			}
+			leftmost_time += time.Since(leftmost_search_start)
+
+			cur_p = candidates[endpoint]
+
+			// Someone already found this point
+			if selected.get(cur_p) != nil {
+				failed = failed || false
+				break
+			}
+			if steps == uint64(group_size-1) {
+				failed = true
+				break
+			}
+			atomic.AddUint64(&steps, 1)
+		}
+		wg.Done()
+	}
+
+	count := 0
+	for i := 0; i < len(points); i++ {
+		if selected.get(points[i]) != nil {
+			count += 1
+		}
+	}
+	// Now traverse the subhulls both left and right
+	wg.Add(2)
+	go find_hull(left, 1.0)
+	go find_hull(left, -1.0)
+	wg.Wait()
+
+	if failed {
+		// need to retry
+		return nil
+	}
+
+	for i := 0; i < len(points); i++ {
+		if selected.get(points[i]) != nil {
+			hull = append(hull, points[i])
+		}
+	}
+	return hull
+}
+
 // Parallel Chan's algorithm O(nlogh)
 func parallel_chans(points [][2]float32) [][2]float32 {
 	n := len(points)
@@ -131,16 +227,14 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 	var t uint
 	t = 3 // Init group size as 2^2^3 = 256
 	start := time.Now()
-	subhulls := make([][2]float32, 0, n>>1) // n>>1 Just a guess on how many points will be in subhulls
-	subhull_sizes := make([]int, 0, n/(1<<(1<<t))+1)
+
 	debug("initial allocation time", time.Since(start))
 
 	ch := make(chan [][2]float32)
 	for {
 		iteration := func(cur_t uint) {
-			subhulls = subhulls[:0]
-			subhull_sizes = subhull_sizes[:0]
-
+			subhulls := make([][2]float32, 0, n>>1) // n>>1 Just a guess on how many points will be in subhulls
+			subhull_sizes := make([]int, 0, n/(1<<(1<<t))+1)
 			// Try out group size
 			group_size := 1 << (1 << cur_t)
 			if group_size == 0 {
@@ -157,7 +251,9 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 			 ***********************/
 			subhull_start := time.Now()
 			// subhulls, subhull_sizes = basic_par_subhull(points, group_size, n, subhulls, subhull_sizes)
-			subhulls, subhull_sizes = thread_pool_subhull(points, group_size, n, subhulls, subhull_sizes)
+			copy_points := make([][2]float32, len(points))
+			copy(copy_points, points)
+			subhulls, subhull_sizes = thread_pool_subhull(copy_points, group_size, n, subhulls, subhull_sizes)
 			debug("chan's subgroups total", time.Since(subhull_start))
 
 			/****************************************
@@ -165,9 +261,9 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 			 ****************************************/
 			march_start := time.Now()
 			var hull [][2]float32
-			// Jarvis march meant for Chan's algorithm, should use bsearch
-			// TODO parallelize this somehow
-			hull = subhull_jarvis(subhulls, subhull_sizes, group_size)
+			// Jarvis march meant for Chan's algorithm, operates on subhulls
+			// hull = subhull_jarvis(subhulls, subhull_sizes, group_size)
+			hull = parallel_subhull_jarvis(subhulls, subhull_sizes, group_size)
 			debug("march time", time.Since(march_start))
 
 			ch <- hull
