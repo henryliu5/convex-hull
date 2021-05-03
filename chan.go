@@ -61,7 +61,13 @@ func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float3
 	c := 0
 	n := len(V)
 	// Need V[N] == V[0]
+	// TODO don't do this, just use mod EVERYWHERE
+	// reason: in parallel multiple goroutines can look at this mem, don't want it to be intermittently modified
+	temp_s := V[:len(V)+1]
+	temp := temp_s[len(V)]
 	V = append(V, V[0])
+	defer func() { V[n] = temp }()
+
 	dnC := false
 	dnA := false
 	if above(P, V[n-1], V[0]) && !below(P, V[1], V[0]) {

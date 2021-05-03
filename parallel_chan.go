@@ -137,6 +137,7 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 
 	// Leftmost point starts as first point on hull
 	left := leftmost(points)
+	right := rightmost(points)
 
 	wg := sync.WaitGroup{}
 	failed := false
@@ -158,6 +159,7 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 				start := subhull_index
 				end := subhull_index + subhull_sizes[i]
 				candidates[i] = find_tangent(points[start:end], cur_p, order)
+				// candidates[i] = find_tangent_bsearch(points[start:end], cur_p, order)
 				subhull_index += subhull_sizes[i]
 			}
 
@@ -203,7 +205,7 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 	// Now traverse the subhulls both left and right
 	wg.Add(2)
 	go find_hull(left, 1.0)
-	go find_hull(left, -1.0)
+	go find_hull(right, 1.0)
 	wg.Wait()
 
 	if failed {
