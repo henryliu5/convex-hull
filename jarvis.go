@@ -130,7 +130,6 @@ func parallel_jarvis(points [][2]float32) [][2]float32 {
 		wg.Done()
 	}
 	wg.Add(8)
-	fmt.Println(left)
 	go do_left(left)
 	go do_right(left)
 	go do_left(right)
