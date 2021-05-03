@@ -201,36 +201,26 @@ func quickhull_p(points [][2]float32){
 func quickhull_serial(points [][2]float32) [][2]float32{
 
 	convex_hull = make(map[[2]float32]bool)
-	for i := 0; i < len(points); i++{
-		convex_hull[points[i]] = false
-	}
 	
 	quickhull(points)
 
 	hull_res := make([][2]float32,0)
 	
-	for i := 0; i < len(convex_hull); i++{
-		if (convex_hull[points[i]]){
-			hull_res = append(hull_res,points[i])
-		}
-	}
+	for key, _ := range convex_hull {
+        hull_res = append(hull_res,key)
+    }
 	return hull_res
 }
 
 func quickhull_parallel(points [][2]float32) [][2]float32 {
 	convex_hull = make(map[[2]float32]bool)
-	for i := 0; i < len(points); i++{
-		convex_hull[points[i]] = false
-	}
 
 	quickhull_p(points)
 
 	hull_res := make([][2]float32,0)
 	
-	for i := 0; i < len(convex_hull); i++{
-		if (convex_hull[points[i]]){
-			hull_res = append(hull_res,points[i])
-		}
-	}
+	for key, _ := range convex_hull {
+        hull_res = append(hull_res,key)
+    }
 	return hull_res
 }
