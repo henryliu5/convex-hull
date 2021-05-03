@@ -27,6 +27,10 @@ func find_tangent(subhull [][2]float32, p [2]float32, order float32) [2]float32 
 	return subhull[endpoint]
 }
 
+func mod(a, b int) int {
+	return (a%b + b) % b
+}
+
 // Left of line a->b
 func above(a, b, c [2]float32) bool {
 	return cross_prod(a, b, c) > 0
@@ -63,10 +67,10 @@ func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float3
 	// Need V[N] == V[0]
 	// TODO don't do this, just use mod EVERYWHERE
 	// reason: in parallel multiple goroutines can look at this mem, don't want it to be intermittently modified
-	temp_s := V[:len(V)+1]
-	temp := temp_s[len(V)]
-	V = append(V, V[0])
-	defer func() { V[n] = temp }()
+	// temp_s := V[:len(V)+1]
+	// temp := temp_s[len(V)]
+	// V = append(V, V[0])
+	// defer func() { V[n] = temp }()
 
 	dnC := false
 	dnA := false
@@ -87,11 +91,11 @@ func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float3
 		lastC = c
 
 		c = (a + b) / 2
-		dnC = below(P, V[c+1], V[c])
+		dnC = below(P, V[mod(c+1, n)], V[c])
 		if above(P, V[c-1], V[c]) && !dnC {
 			return V[c]
 		}
-		dnA = below(P, V[a+1], V[a])
+		dnA = below(P, V[mod(a+1, n)], V[a])
 		if dnA {
 			if !dnC {
 				b = c
@@ -117,7 +121,7 @@ func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float3
 	// We were on the convex hull so my leftmost is in my hull
 	for i := 0; i < len(V); i++ {
 		if P[0] == V[i][0] && P[1] == V[i][1] {
-			return V[i+1]
+			return V[mod(i+1, n)]
 		}
 	}
 	fmt.Println("failed to find!")

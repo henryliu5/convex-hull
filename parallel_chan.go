@@ -158,8 +158,8 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 			for i := 0; i < n_subhulls; i++ {
 				start := subhull_index
 				end := subhull_index + subhull_sizes[i]
-				candidates[i] = find_tangent(points[start:end], cur_p, order)
-				// candidates[i] = find_tangent_bsearch(points[start:end], cur_p, order)
+				// candidates[i] = find_tangent(points[start:end], cur_p, order)
+				candidates[i] = find_tangent_bsearch(points[start:end], cur_p, order)
 				subhull_index += subhull_sizes[i]
 			}
 
