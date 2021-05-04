@@ -26,7 +26,7 @@ func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name 
 		ns_elap := time.Since(fn_start).Nanoseconds()
 		time_total += (ns_elap)
 		// Write hull to output
-		if (do_output){
+		if do_output {
 			output_points(fmt.Sprintf("%s.txt", name), hull)
 		}
 	}
@@ -83,7 +83,7 @@ func main() {
 	variable_of_interest := flag.String("voi", "", "variable of interest to be recorded in data")
 	do_output_ptr := flag.Bool("do_output", true, "output hull")
 	flag.Parse()
-	
+
 	do_output := *do_output_ptr
 
 	save_time := (*result_file_ptr != "")

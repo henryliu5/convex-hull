@@ -152,7 +152,7 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 		// If need to add more points than the group size, retry with different group size
 		for {
 			// fmt.Println("cur", order, cur_p)
-			selected.put(cur_p, [2]float32{1.0, 1.0})
+			selected.put(cur_p, [][2]float32{[2]float32{1.0, 1.0}})
 			subhull_index := 0
 			// Compute the tangent point for each of the subhulls
 			for i := 0; i < n_subhulls; i++ {
@@ -221,10 +221,18 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 	return hull
 }
 
+// Enable subhull coaslecing from previous iterations
+var USE_COALESCE bool = false
+
 // Parallel Chan's algorithm O(nlogh)
 func parallel_chans(points [][2]float32) [][2]float32 {
 	n := len(points)
 	tangent_time = 0
+
+	if USE_COALESCE {
+		// Initialize size of concurrent map
+		global_subhulls.init(n / 4)
+	}
 
 	var t uint
 	t = 3 // Init group size as 2^2^3 = 256
@@ -252,10 +260,16 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 			 * Subhull computation *
 			 ***********************/
 			subhull_start := time.Now()
-			// subhulls, subhull_sizes = basic_par_subhull(points, group_size, n, subhulls, subhull_sizes)
 			copy_points := make([][2]float32, len(points))
 			copy(copy_points, points)
-			subhulls, subhull_sizes = thread_pool_subhull(copy_points, group_size, n, subhulls, subhull_sizes)
+
+			if USE_COALESCE {
+				subhulls, subhull_sizes = coalesce_subhull(points, group_size, n, subhulls, subhull_sizes)
+				debug("POINTS SAVED", points_saved)
+			} else {
+				// subhulls, subhull_sizes = basic_par_subhull(points, group_size, n, subhulls, subhull_sizes)
+				subhulls, subhull_sizes = thread_pool_subhull(copy_points, group_size, n, subhulls, subhull_sizes)
+			}
 			debug("chan's subgroups total", time.Since(subhull_start))
 
 			/****************************************
@@ -290,4 +304,82 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 		// Group size too small
 		t += uint(simul_iters)
 	}
+}
+
+var global_subhulls SafeMap
+var points_saved int
+
+type Subhull struct {
+	points [][2]float32
+	start  int
+	end    int
+}
+
+// Parallel subhull computation that coalesces previously computed subhulls as well
+func coalesce_subhull(points [][2]float32, group_size, n int, subhulls [][2]float32, subhull_sizes []int) ([][2]float32, []int) {
+	var subhull_compute time.Duration
+	var subhull_append time.Duration
+	num_subhulls := 0
+	ch := make(chan Subhull)
+	worker := func(points [][2]float32, start, end int, ch chan Subhull) {
+		res := parallel_graham_scan(points)
+		ch <- Subhull{res, start, end}
+	}
+	// Run graham scan on subgroups of points
+	for start := 0; start < n; start += group_size {
+		end := start + group_size
+		if n < end {
+			end = n
+		}
+
+		// Try to build subhull using old results
+		local_points := make([][2]float32, 0)
+		if group_size > 256 {
+			// See if a smaller iteration already computed the subhull
+			for local_start := start; local_start < end; local_start += 256 {
+				local_end := local_start + 256
+				if n < local_end {
+					local_end = n
+				}
+				previous_result := global_subhulls.get([2]float32{float32(local_start), float32(local_end)})
+				if previous_result != nil {
+					local_points = append(local_points, previous_result...)
+					points_saved += (local_end - local_start)
+				} else {
+					local_points = append(local_points, points[local_start:local_end]...)
+				}
+			}
+		} else {
+			local_points = points[start:end]
+		}
+
+		// Compute convex hull of subgroup using graham-scan
+		go worker(local_points, start, end, ch)
+		num_subhulls += 1
+	}
+	// Central manager to collect subhulls from workers
+	for i := 0; i < num_subhulls; i++ {
+		subhull_start := time.Now()
+		res := <-ch
+		subhull := res.points
+		subhull_compute += time.Since(subhull_start)
+
+		// Update the result so future iterations can use
+		global_subhulls.put([2]float32{float32(res.start), float32(res.end)}, res.points)
+
+		append_start := time.Now()
+		// Aggregrate into a single array for performance
+		subhulls = append(subhulls, subhull...)
+		// but track sizes to know offset
+		subhull_sizes = append(subhull_sizes, len(subhull))
+		subhull_append += time.Since(append_start)
+
+	}
+
+	// debug("-------", num_subhulls)
+	debug("subhull point count", len(subhulls))
+	debug("chan's subgroups compute", subhull_compute)
+	debug("chan's subgroups append", subhull_append)
+
+	return subhulls, subhull_sizes
 }

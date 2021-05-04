@@ -14,7 +14,7 @@ type Bucket struct {
 // Entry is a single node in the bucket
 type Entry struct {
 	key   [2]float32
-	value [2]float32
+	value [][2]float32
 	next  *Entry
 	mutex *sync.Mutex
 }
@@ -42,7 +42,7 @@ func hash(key [2]float32) int {
 }
 
 // Insert a key into the map
-func (sm *SafeMap) put(key [2]float32, value [2]float32) {
+func (sm *SafeMap) put(key [2]float32, value [][2]float32) {
 	// Find bucket, acquire read lock
 	// See if my key is there
 	// If my key is there
@@ -58,7 +58,7 @@ func (sm *SafeMap) put(key [2]float32, value [2]float32) {
 	if entry != nil {
 		// My key is here, acquire the mutex and add
 		entry.mutex.Lock()
-		entry.value = value
+		entry.value = append(entry.value, value...)
 		entry.mutex.Unlock()
 		rwLock.RUnlock()
 	} else {
@@ -72,7 +72,7 @@ func (sm *SafeMap) put(key [2]float32, value [2]float32) {
 		entry = findEntry(&sm.con[bucketNum], key)
 		if entry != nil {
 			// Someone did it for us, we are the only one in the whole bucket so just append
-			entry.value = value
+			entry.value = append(entry.value, value...)
 			sm.wastedInsertions++
 		} else {
 			addEntry(&sm.con[bucketNum], key, value)
@@ -93,7 +93,7 @@ func findEntry(bucket *Bucket, key [2]float32) *Entry {
 }
 
 // Add an entry to the bucket - assumes the lock for the bucket has been acquired
-func addEntry(bucket *Bucket, key [2]float32, value [2]float32) {
+func addEntry(bucket *Bucket, key [2]float32, value [][2]float32) {
 	// See if the bucket has anything
 	if bucket.entry == nil {
 		bucket.entry = &Entry{key, value, nil, &sync.Mutex{}}
@@ -110,16 +110,16 @@ func addEntry(bucket *Bucket, key [2]float32, value [2]float32) {
 }
 
 // NOT concurrent
-func (sm *SafeMap) get(key [2]float32) []float32 {
+func (sm *SafeMap) get(key [2]float32) [][2]float32 {
 	bucketNum := hash(key) % sm.size
 	rwLock := sm.con[bucketNum].mutex
 	rwLock.RLock()
 	entry := findEntry(&sm.con[bucketNum], key)
-	var res []float32
+	var res [][2]float32
 
 	if entry != nil {
 		entry.mutex.Lock()
-		res = entry.value[0:2]
+		res = entry.value
 		entry.mutex.Unlock()
 	} else {
 		res = nil
