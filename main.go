@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 )
 
@@ -42,6 +44,8 @@ func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name 
 }
 
 func main() {
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 	result_file_ptr := flag.String("result_file", "", "result file location")
 	inputPtr := flag.String("input", "./serial_quickhull/input_points.txt", "input file location")
 	num_trials_ptr := flag.Int("trials", 1, "number of trials")
@@ -52,6 +56,15 @@ func main() {
 	do_coalesce := flag.Bool("coalesce", false, "enable coalescing of subhulls from chan's iterations")
 
 	flag.Parse()
+
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	// Set # OS threads
 	runtime.GOMAXPROCS(*go_maxprocs)
@@ -68,18 +81,18 @@ func main() {
 		return
 	}
 
-	// Run jarvis march
-	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	// run_hull(points, naive_parallel_jarvis, "naive_parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/naive_parallel_jarvis.txt")
-	run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	// // Run jarvis march
+	// run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	// // run_hull(points, naive_parallel_jarvis, "naive_parallel_jarvis", *num_trials_ptr, save_time, *result_dir_ptr+"/naive_parallel_jarvis.txt")
+	// run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
 
-	// Run graham scan
-	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	// // Run graham scan
+	// run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	// run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
 
-	// Run chan's
-	run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	// // Run chan's
+	// run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	// run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
 
 	// Run quickhull
 	run_hull(points, quickhull_serial, "serial_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
