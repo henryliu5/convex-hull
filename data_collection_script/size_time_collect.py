@@ -54,7 +54,7 @@ plt.close()
 for algo in algos:
     para_algo = algo.replace("serial", "parallel") 
     if ("serial" in algo and para_algo in algos):
-        serial_df = res_df[res_df["Algo"] == algo]
+        serial_df = res_df[res_df["Algo"] == "serial_qh"]
         para_df = res_df[res_df["Algo"] == para_algo]
         plot_speedup_dual(serial_df, para_df, algo.replace("_serial", "").strip())
 

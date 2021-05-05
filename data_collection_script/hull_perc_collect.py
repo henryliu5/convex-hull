@@ -49,16 +49,16 @@ res_df = pd.read_csv("../data_results/hull_portion_results/" + test_descriptor +
 algos = res_df["Algo"].unique()
 for algo in algos:
     algo_df = res_df[res_df["Algo"] == algo]
-    plot_line(algo_df["Var"], algo_df["Time"] / 1000, algo)
+    plot_line(algo_df["Var"] * 100, algo_df["Time"] / 1000, algo)
 
-plot_label("Percentage of Hull Points", "Time (ms)", "Convex Hull Algorithm Speedup Hull Vary")
+plot_label("Percentage of Hull Points", "Time (ms)", "Convex Hull Algorithm Time Hull Vary")
 plt.savefig("../data_results/hull_portion_results/" + test_descriptor + ".png")
 plt.close()
 
 for algo in algos:
     para_algo = algo.replace("serial", "parallel") 
     if ("serial" in algo and para_algo in algos):
-        serial_df = res_df[res_df["Algo"] == algo]
+        serial_df = res_df[res_df["Algo"] == "serial_qh"]
         para_df = res_df[res_df["Algo"] == para_algo]
         plot_speedup_dual(serial_df, para_df, algo.replace("_serial", "").strip())
 

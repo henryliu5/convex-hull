@@ -50,16 +50,16 @@ for algo in algos:
     algo_df = res_df[res_df["Algo"] == algo]
     plot_line(algo_df["Var"], algo_df["Time"] / 1000, algo)
 
-plot_label("Max Procs", "Time (ms)", "Convex Hull Algorithm Speedup Hull Vary")
+plot_label("Max Procs", "Time (ms)", "Convex Hull Algorithm Time")
 plt.savefig("../data_results/num_procs_results/" + test_descriptor + ".png")
 plt.close()
 
 for algo in algos:
     para_algo = algo.replace("serial", "parallel") 
     if ("serial" in algo and para_algo in algos):
-        serial_df = res_df[res_df["Algo"] == algo]
+        serial_df = res_df[res_df["Algo"] == "serial_qh"]
         para_df = res_df[res_df["Algo"] == para_algo]
         plot_speedup_dual(serial_df, para_df, algo.replace("_serial", "").strip())
 
-plot_label("Percentage of Hull Points", "Speedup", "Convex Hull Algorithm Speedup Hull Vary")
+plot_label("Max Procs", "Speedup", "Convex Hull Algorithm Speedup")
 plt.savefig("../data_results/num_procs_results/" + test_descriptor + "_speedup.png")

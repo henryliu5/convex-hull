@@ -32,32 +32,59 @@ trials = 5
 #sizes = [100000,200000]
 
 test_descriptor = str(sys.argv[1])
-l = [False, True]
-for p in l:
-    print("Trying",l)
-    s=1600
-    #s=100
-    test_gen = "python ../test_case_generation/test_case_gen.py " + str(s) + " " + "HCI" + " temp.txt"
+for p in range(0,7):
+    n = 2**p
+    print("DOing",p)
+    s=1000000
+    test_gen = "python ../test_case_generation/test_case_gen.py " + str(s) + " " + "UNI" + " temp.txt"
     os.system(test_gen)
 
-    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + ".txt --voi="+str(p) + " --coalesce=" + str(p)
+    print("t2") 
+    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + "_coal.txt --voi="+str(n) + " --procs=" + str(n) + " --impl=chan --coalesce=true"
+    result = subprocess.check_output(cmd, shell=True)
+
+    print("t1")
+    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + ".txt --voi="+str(n) + " --procs=" + str(n) + " --impl=chan"
+    result = subprocess.check_output(cmd, shell=True)
+
+    print("t3")
+    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + "_sing_iter.txt --voi="+str(n) + " --procs=" + str(n) + " --impl=chan --simul_iters=1"
+    result = subprocess.check_output(cmd, shell=True)
+
+    print("t4")
+    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + "_qh.txt --voi="+str(n) + " --procs=" + str(n) + " --impl=quic"
     result = subprocess.check_output(cmd, shell=True)
 
 res_df = pd.read_csv("../data_results/coalesce_folder/" + test_descriptor + ".txt", sep='\t', names=["Algo", "Trials", "Time", "Var"])
-res_df = res_df[(res_df["Algo"]=="serial_chans") | (res_df["Algo"]=="parallel_chans")]
 print(res_df)
-labels = list()
-times = list()
-for index, row in res_df.iterrows():
-    times.append(row["Time"])
-    name = row["Algo"]
-    if (row["Var"] == True):
-        name = name + " Coalesced"
-    labels.append(name)
+res_df = res_df[res_df["Algo"] == "parallel_chans"]
 
-plt.bar(labels, times, color ='maroon',
-        width = 0.4)
+res_df_co = pd.read_csv("../data_results/coalesce_folder/" + test_descriptor + "_coal.txt", sep='\t', names=["Algo", "Trials", "Time", "Var"])
+res_df_co = res_df_co[res_df_co["Algo"] == "parallel_chans"]
 
-plot_label("Algo Ran", "Time (ms)", "Convex Hull Algorithm on 1,600,000 High Circle Sample")
+res_df_si = pd.read_csv("../data_results/coalesce_folder/" + test_descriptor + "_sing_iter.txt", sep='\t', names=["Algo", "Trials", "Time", "Var"])
+res_df_si = res_df_si[res_df_si["Algo"] == "parallel_chans"]
+
+res_df_qh = pd.read_csv("../data_results/coalesce_folder/" + test_descriptor + "_qh.txt", sep='\t', names=["Algo", "Trials", "Time", "Var"])
+best_serial_time = res_df_qh[res_df_qh["Algo"] == "serial_qh"]["Time"].mean()
+res_df_qh = res_df_qh[res_df_qh["Algo"] == "parallel_qh"]
+
+
+plot_line(res_df["Var"], res_df["Time"] / 1000, "Chan's")
+plot_line(res_df_co["Var"], res_df_co["Time"] / 1000, "Chan's (Coalesce)")
+plot_line(res_df_si["Var"], res_df_si["Time"] / 1000, "Chan's 1 Simul Iter")
+plot_line(res_df_qh["Var"], res_df_qh["Time"] / 1000, "Quickhull")
+plot_label("Max Procs", "Time (ms)", "Convex Hull Algorithm Time")
 plt.savefig("../data_results/coalesce_folder/" + test_descriptor + ".png")
+plt.close()
+
+
+
+print(best_serial_time, "best")
+plot_line(res_df["Var"], best_serial_time / res_df["Time"] / best_serial_time, "Chan's")
+plot_line(res_df_co["Var"], best_serial_time / res_df_co["Time"], "Chan's (Coalesce)")
+plot_line(res_df_si["Var"], best_serial_time / res_df_si["Time"], "Chan's 1 Simul Iter")
+plot_line(res_df_qh["Var"], best_serial_time / res_df_qh["Time"], "Quickhull")
+plot_label("Max Procs", "Speedup", "Convex Hull Algorithm Speedup")
+plt.savefig("../data_results/coalesce_folder/" + test_descriptor + "_sp.png")
 plt.close()

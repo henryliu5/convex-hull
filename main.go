@@ -55,6 +55,7 @@ func main() {
 	go_maxprocs := flag.Int("procs", runtime.NumCPU(), "set runtime.GOMAXPROCS aka how many OS threads")
 	do_coalesce := flag.Bool("coalesce", false, "enable coalescing of subhulls from chan's iterations")
 	simul_iters := flag.Int("simul_iters", 2, "how many iterations of chan's to run simultaneously")
+	impl_ptr := flag.String("impl", "", "which implementation to run")
 
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	// memprofile := flag.String("memprofile", "", "write memory profile to this file")
@@ -79,6 +80,7 @@ func main() {
 	SIMUL_ITERS = *simul_iters
 
 	do_output := *do_output_ptr
+	impl := *impl_ptr
 
 	save_time := (*result_file_ptr != "")
 	points := parse_file(*inputPtr)
@@ -88,21 +90,31 @@ func main() {
 		return
 	}
 
+
+
 	// Run jarvis march
-	run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	if (impl == "" || impl == "jarv"){
+		run_hull(points, seq_jarvis, "serial_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+		run_hull(points, parallel_jarvis, "parallel_jarvis", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	}
 
 	// Run graham scan
-	run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	if (impl == "" || impl == "grah"){
+		run_hull(points, seq_graham_scan, "serial_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+		run_hull(points, parallel_graham_scan, "parallel_graham", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	}
 
 	// Run chan's
-	run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	if (impl == "" || impl == "chan"){
+		run_hull(points, seq_chans, "serial_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+		run_hull(points, parallel_chans, "parallel_chans", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	}
 
 	// Run quickhull
-	run_hull(points, quickhull_serial, "serial_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
-	run_hull(points, quickhull_parallel, "parallel_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	if (impl == "" || impl == "quic"){
+		run_hull(points, quickhull_serial, "serial_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+		run_hull(points, quickhull_parallel, "parallel_qh", *num_trials_ptr, save_time, *result_file_ptr, *variable_of_interest, do_output)
+	}
 
 	// output_points("input.txt", points)
 	// if *memprofile != "" {
