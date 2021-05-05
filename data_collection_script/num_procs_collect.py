@@ -37,7 +37,7 @@ for p in range(0,7):
     print("DOing",p)
     s=1600000
     #s=100
-    test_gen = "python ../test_case_generation/test_case_gen.py " + str(s) + " " + "UNI" + " temp.txt"
+    test_gen = "python ../test_case_generation/test_case_gen.py " + str(s) + " " + "HCI" + " temp.txt"
     os.system(test_gen)
 
     cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/num_procs_results/" + test_descriptor + ".txt --voi="+str(n) + " --procs=" + str(n)
