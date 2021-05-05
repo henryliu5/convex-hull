@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -41,48 +42,21 @@ func run_hull(points [][2]float32, method func([][2]float32) [][2]float32, name 
 }
 
 func main() {
-	// /**********************
-	//  * Points from memory *
-	//  **********************/
-	// n := 2000000
-	// start := time.Now()
-	// points := make([][2]float32, 0, n+4)
-	// fmt.Println("allocation time", time.Since(start))
-
-	// // actual hull
-	// points = append(points, [][2]float32{
-	// 	{-1, -1},
-	// 	{-1, 1},
-	// 	{1, 1},
-	// 	{1, -1},
-	// }...,
-	// )
-
-	// start = time.Now()
-	// // random points inside
-	// for i := 0; i < n; i++ {
-	// 	// x := rand.Float32()*2 - 1
-	// 	// y := rand.Float32()*2 - 1
-	// 	// a = append(a, [2]float32{x, y})
-
-	// 	// Integer test due to floating point error
-	// 	x := rand.Int31() - math.MaxInt32/2
-	// 	y := rand.Int31() - math.MaxInt32/2
-	// 	points = append(points, [2]float32{float32(x), float32(y)})
-	// }
-	// fmt.Println("creation time", time.Since(start))
-
-	/********************
-	 * Points from file *
-	 ********************/
-
 	result_file_ptr := flag.String("result_file", "", "result file location")
 	inputPtr := flag.String("input", "./serial_quickhull/input_points.txt", "input file location")
 	num_trials_ptr := flag.Int("trials", 1, "number of trials")
 	//Pass something like number of points if you want it to be recorded in the data for later visualization
 	variable_of_interest := flag.String("voi", "", "variable of interest to be recorded in data")
 	do_output_ptr := flag.Bool("do_output", true, "output hull")
+	go_maxprocs := flag.Int("procs", runtime.NumCPU(), "set runtime.GOMAXPROCS aka how many OS threads")
+	do_coalesce := flag.Bool("coalesce", false, "enable coalescing of subhulls from chan's iterations")
+
 	flag.Parse()
+
+	// Set # OS threads
+	runtime.GOMAXPROCS(*go_maxprocs)
+	// Enable coalescing of subhulls thru iterations
+	USE_COALESCE = *do_coalesce
 
 	do_output := *do_output_ptr
 
@@ -113,3 +87,34 @@ func main() {
 
 	// output_points("input.txt", points)
 }
+
+// /**********************
+//  * Points from memory *
+//  **********************/
+// n := 2000000
+// start := time.Now()
+// points := make([][2]float32, 0, n+4)
+// fmt.Println("allocation time", time.Since(start))
+
+// // actual hull
+// points = append(points, [][2]float32{
+// 	{-1, -1},
+// 	{-1, 1},
+// 	{1, 1},
+// 	{1, -1},
+// }...,
+// )
+
+// start = time.Now()
+// // random points inside
+// for i := 0; i < n; i++ {
+// 	// x := rand.Float32()*2 - 1
+// 	// y := rand.Float32()*2 - 1
+// 	// a = append(a, [2]float32{x, y})
+
+// 	// Integer test due to floating point error
+// 	x := rand.Int31() - math.MaxInt32/2
+// 	y := rand.Int31() - math.MaxInt32/2
+// 	points = append(points, [2]float32{float32(x), float32(y)})
+// }
+// fmt.Println("creation time", time.Since(start))

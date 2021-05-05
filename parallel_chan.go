@@ -222,7 +222,7 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 }
 
 // Enable subhull coaslecing from previous iterations
-var USE_COALESCE bool = false
+var USE_COALESCE bool
 
 // Parallel Chan's algorithm O(nlogh)
 func parallel_chans(points [][2]float32) [][2]float32 {
