@@ -57,6 +57,13 @@ def generate_normal_circle(num_points):
         y_list.append(y)
     return x_list,y_list
 
+def is_float_try(str):
+    try:
+        float(str)
+        return True
+    except ValueError:
+        return False
+
 if (len(sys.argv) < 4):
     print("Arguments needed (1) number of points (2) type of points to generate - see README (3) directory to save test case")
 num_points = int(sys.argv[1])
@@ -75,6 +82,9 @@ elif (point_type == "MCI"):
     x,y = generate_circle(num_points, 0.3)
 elif (point_type == "HCI"):
     x,y = generate_circle(num_points, 0.6)
+elif (is_float_try(point_type)):
+    per = float(point_type)
+    x,y = generate_circle(num_points, per)
 else:
     x,y = list(), list()
 
