@@ -54,6 +54,7 @@ func main() {
 	do_output_ptr := flag.Bool("do_output", true, "output hull")
 	go_maxprocs := flag.Int("procs", runtime.NumCPU(), "set runtime.GOMAXPROCS aka how many OS threads")
 	do_coalesce := flag.Bool("coalesce", false, "enable coalescing of subhulls from chan's iterations")
+	simul_iters := flag.Int("simul_iters", 2, "how many iterations of chan's to run simultaneously")
 
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	// memprofile := flag.String("memprofile", "", "write memory profile to this file")
@@ -74,6 +75,8 @@ func main() {
 	runtime.GOMAXPROCS(*go_maxprocs)
 	// Enable coalescing of subhulls thru iterations
 	USE_COALESCE = *do_coalesce
+	// Set number of iterations of chan's to run simultaneously
+	SIMUL_ITERS = *simul_iters
 
 	do_output := *do_output_ptr
 

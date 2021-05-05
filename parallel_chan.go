@@ -223,6 +223,7 @@ func parallel_subhull_jarvis(points [][2]float32, subhull_sizes []int, group_siz
 
 // Enable subhull coaslecing from previous iterations
 var USE_COALESCE bool
+var SIMUL_ITERS int
 
 // Parallel Chan's algorithm O(nlogh)
 func parallel_chans(points [][2]float32) [][2]float32 {
@@ -260,13 +261,14 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 			 * Subhull computation *
 			 ***********************/
 			subhull_start := time.Now()
-			copy_points := make([][2]float32, len(points))
-			copy(copy_points, points)
 
 			if USE_COALESCE {
 				subhulls, subhull_sizes = coalesce_subhull(points, group_size, n, subhulls, subhull_sizes)
+				// subhulls, subhull_sizes = thread_pool_coalesce_subhull(points, group_size, n, subhulls, subhull_sizes)
 				debug("POINTS SAVED", points_saved)
 			} else {
+				copy_points := make([][2]float32, len(points))
+				copy(copy_points, points)
 				// subhulls, subhull_sizes = basic_par_subhull(points, group_size, n, subhulls, subhull_sizes)
 				subhulls, subhull_sizes = thread_pool_subhull(copy_points, group_size, n, subhulls, subhull_sizes)
 			}
@@ -286,13 +288,12 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 		}
 
 		// Conduct multiple iterations at once
-		simul_iters := 2
-		for i := 0; i < simul_iters; i++ {
+		for i := 0; i < SIMUL_ITERS; i++ {
 			go iteration(t + uint(i))
 		}
 
 		// See if any of the iterations were succesful
-		for i := 0; i < simul_iters; i++ {
+		for i := 0; i < SIMUL_ITERS; i++ {
 			hull := <-ch
 			if hull != nil {
 				debug("tangent time", tangent_time)
@@ -302,9 +303,13 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 		}
 
 		// Group size too small
-		t += uint(simul_iters)
+		t += uint(SIMUL_ITERS)
 	}
 }
+
+/********************
+ * Coalescing stuff *
+ ********************/
 
 var global_subhulls SafeMap
 var points_saved int
@@ -344,7 +349,7 @@ func coalesce_subhull(points [][2]float32, group_size, n int, subhulls [][2]floa
 				previous_result := global_subhulls.get([2]float32{float32(local_start), float32(local_end)})
 				if previous_result != nil {
 					local_points = append(local_points, previous_result...)
-					points_saved += (local_end - local_start)
+					points_saved += (local_end - local_start) - len(previous_result)
 				} else {
 					local_points = append(local_points, points[local_start:local_end]...)
 				}
@@ -383,3 +388,106 @@ func coalesce_subhull(points [][2]float32, group_size, n int, subhulls [][2]floa
 
 	return subhulls, subhull_sizes
 }
+
+// // Worker to process a subhull and send back to manager
+// func coalesce_worker(work_ch chan Subhull, result_ch chan Subhull, wg *sync.WaitGroup) {
+// 	for subhull := range work_ch {
+// 		res := parallel_graham_scan(subhull.points)
+// 		result_ch <- Subhull{res, subhull.start, subhull.end}
+// 	}
+// 	wg.Done()
+// }
+
+// // Parallel subhull comptuation that that coalesces previously computed subhulls as well, uses a thread-pool like thing to limit the number of goroutines to MAX_SUBHULL_WORKERS
+// func thread_pool_coalesce_subhull(points [][2]float32, group_size, n int, subhulls [][2]float32, subhull_sizes []int) ([][2]float32, []int) {
+// 	MAX_SUBHULL_WORKERS := 300
+
+// 	var subhull_compute time.Duration
+// 	var subhull_append time.Duration
+
+// 	work_ch := make(chan Subhull)
+// 	result_ch := make(chan Subhull)
+// 	wg := sync.WaitGroup{}
+
+// 	num_workers := (n + group_size - 1) / group_size
+// 	if num_workers > MAX_SUBHULL_WORKERS {
+// 		num_workers = MAX_SUBHULL_WORKERS
+// 	}
+
+// 	for i := 0; i < num_workers; i++ {
+// 		wg.Add(1)
+// 		go coalesce_worker(work_ch, result_ch, &wg)
+// 	}
+
+// 	num_subhulls := (n + group_size - 1) / group_size
+
+// 	manager_wg := sync.WaitGroup{}
+// 	manager_wg.Add(1)
+// 	manager := func() {
+// 		// Central manager to collect subhulls from workers
+// 		for i := 0; i < num_subhulls; i++ {
+// 			res := <-result_ch
+// 			subhull := res.points
+// 			// for subhull := range result_ch {
+// 			subhull_start := time.Now()
+// 			subhull_compute += time.Since(subhull_start)
+
+// 			// Update the result so future iterations can use
+// 			global_subhulls.put([2]float32{float32(res.start), float32(res.end)}, res.points)
+
+// 			append_start := time.Now()
+// 			// Aggregrate into a single array for performance
+// 			subhulls = append(subhulls, subhull...)
+// 			// but track sizes to know offset
+// 			subhull_sizes = append(subhull_sizes, len(subhull))
+// 			subhull_append += time.Since(append_start)
+// 		}
+// 		manager_wg.Done()
+// 	}
+
+// 	go manager()
+
+// 	// Run graham scan on subgroups of points
+// 	for start := 0; start < n; start += group_size {
+// 		end := start + group_size
+// 		if n < end {
+// 			end = n
+// 		}
+
+// 		// Try to build subhull using old results
+// 		local_points := make([][2]float32, 0)
+// 		if group_size > 256 {
+// 			// See if a smaller iteration already computed the subhull
+// 			for local_start := start; local_start < end; local_start += 256 {
+// 				local_end := local_start + 256
+// 				if n < local_end {
+// 					local_end = n
+// 				}
+// 				previous_result := global_subhulls.get([2]float32{float32(local_start), float32(local_end)})
+// 				if previous_result != nil {
+// 					local_points = append(local_points, previous_result...)
+// 					points_saved += (local_end - local_start) - len(previous_result)
+// 				} else {
+// 					local_points = append(local_points, points[local_start:local_end]...)
+// 				}
+// 			}
+
+// 		} else {
+// 			local_points = points[start:end]
+// 		}
+// 		// Compute convex hull of subgroup using graham-scan
+// 		work_ch <- Subhull{local_points, start, end}
+// 	}
+
+// 	// Finished sending work
+// 	close(work_ch)
+// 	// Wait for workers to complete
+// 	wg.Wait()
+// 	manager_wg.Wait()
+
+// 	// fmt.Println("-------", num_subhulls, (n+group_size-1)/group_size)
+// 	debug("subhull point count", len(subhulls))
+// 	debug("chan's subgroups compute", subhull_compute)
+// 	debug("chan's subgroups append", subhull_append)
+// 	return subhulls, subhull_sizes
+// }
