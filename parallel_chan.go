@@ -229,6 +229,7 @@ var SIMUL_ITERS int
 func parallel_chans(points [][2]float32) [][2]float32 {
 	n := len(points)
 	tangent_time = 0
+	var global_subhulls SafeMap
 
 	if USE_COALESCE {
 		// Initialize size of concurrent map
@@ -263,7 +264,7 @@ func parallel_chans(points [][2]float32) [][2]float32 {
 			subhull_start := time.Now()
 
 			if USE_COALESCE {
-				subhulls, subhull_sizes = coalesce_subhull(points, group_size, n, subhulls, subhull_sizes)
+				subhulls, subhull_sizes = coalesce_subhull(&global_subhulls, points, group_size, n, subhulls, subhull_sizes)
 				// subhulls, subhull_sizes = thread_pool_coalesce_subhull(points, group_size, n, subhulls, subhull_sizes)
 				debug("POINTS SAVED", points_saved)
 			} else {
@@ -311,7 +312,7 @@ func parallel_chans(points [][2]float32) [][2]float32 {
  * Coalescing stuff *
  ********************/
 
-var global_subhulls SafeMap
+// var global_subhulls SafeMap
 var points_saved int
 
 type Subhull struct {
@@ -321,7 +322,7 @@ type Subhull struct {
 }
 
 // Parallel subhull computation that coalesces previously computed subhulls as well
-func coalesce_subhull(points [][2]float32, group_size, n int, subhulls [][2]float32, subhull_sizes []int) ([][2]float32, []int) {
+func coalesce_subhull(global_subhulls *SafeMap, points [][2]float32, group_size, n int, subhulls [][2]float32, subhull_sizes []int) ([][2]float32, []int) {
 	var subhull_compute time.Duration
 	var subhull_append time.Duration
 	num_subhulls := 0

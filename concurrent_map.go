@@ -31,6 +31,9 @@ type SafeMap struct {
 func (sm *SafeMap) init(size int) {
 	sm.con = make([]Bucket, size)
 	for i := 0; i < size; i++ {
+		if sm.con[i].mutex != nil {
+			panic("Reinitializing same map")
+		}
 		sm.con[i].mutex = &sync.RWMutex{}
 	}
 	sm.size = size
@@ -53,6 +56,9 @@ func (sm *SafeMap) put(key [2]float32, value [][2]float32) {
 	// Go to end of linked list and add my key
 	bucketNum := hash(key) % sm.size
 	rwLock := sm.con[bucketNum].mutex
+	if rwLock == nil {
+		panic("RWLOCK NULL")
+	}
 	rwLock.RLock()
 	entry := findEntry(&sm.con[bucketNum], key)
 	if entry != nil {
