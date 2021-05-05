@@ -7,7 +7,7 @@ import (
 
 // Bucket is a single spot in the table
 type Bucket struct {
-	mutex *sync.RWMutex
+	mutex sync.RWMutex
 	entry *Entry
 }
 
@@ -16,7 +16,7 @@ type Entry struct {
 	key   [2]float32
 	value [][2]float32
 	next  *Entry
-	mutex *sync.Mutex
+	mutex sync.Mutex
 }
 
 // SafeMap is a custom concurrent map
@@ -31,7 +31,7 @@ type SafeMap struct {
 func (sm *SafeMap) init(size int) {
 	sm.con = make([]Bucket, size)
 	for i := 0; i < size; i++ {
-		sm.con[i].mutex = &sync.RWMutex{}
+		sm.con[i].mutex = sync.RWMutex{}
 	}
 	sm.size = size
 }
@@ -52,21 +52,20 @@ func (sm *SafeMap) put(key [2]float32, value [][2]float32) {
 	// Acquire write lock for bucket
 	// Go to end of linked list and add my key
 	bucketNum := hash(key) % sm.size
-	rwLock := sm.con[bucketNum].mutex
-	rwLock.RLock()
+	sm.con[bucketNum].mutex.RLock()
 	entry := findEntry(&sm.con[bucketNum], key)
 	if entry != nil {
 		// My key is here, acquire the mutex and add
 		entry.mutex.Lock()
 		entry.value = append(entry.value, value...)
 		entry.mutex.Unlock()
-		rwLock.RUnlock()
+		sm.con[bucketNum].mutex.RUnlock()
 	} else {
 		// Key hasn't been inserted before
-		rwLock.RUnlock()
+		sm.con[bucketNum].mutex.RUnlock()
 
 		// Acquire write lock so we can add a new linked list node
-		rwLock.Lock()
+		sm.con[bucketNum].mutex.Lock()
 
 		// Make sure someone didn't add it while we were waiting for lock
 		entry = findEntry(&sm.con[bucketNum], key)
@@ -78,7 +77,7 @@ func (sm *SafeMap) put(key [2]float32, value [][2]float32) {
 			addEntry(&sm.con[bucketNum], key, value)
 			sm.insertions++
 		}
-		rwLock.Unlock()
+		sm.con[bucketNum].mutex.Unlock()
 	}
 
 }
@@ -96,7 +95,7 @@ func findEntry(bucket *Bucket, key [2]float32) *Entry {
 func addEntry(bucket *Bucket, key [2]float32, value [][2]float32) {
 	// See if the bucket has anything
 	if bucket.entry == nil {
-		bucket.entry = &Entry{key, value, nil, &sync.Mutex{}}
+		bucket.entry = &Entry{key, value, nil, sync.Mutex{}}
 	} else {
 		// Add to end of linked list!
 		trail := bucket.entry
@@ -105,15 +104,14 @@ func addEntry(bucket *Bucket, key [2]float32, value [][2]float32) {
 			trail = cur
 			cur = cur.next
 		}
-		trail.next = &Entry{key, value, nil, &sync.Mutex{}}
+		trail.next = &Entry{key, value, nil, sync.Mutex{}}
 	}
 }
 
 // NOT concurrent
 func (sm *SafeMap) get(key [2]float32) [][2]float32 {
 	bucketNum := hash(key) % sm.size
-	rwLock := sm.con[bucketNum].mutex
-	rwLock.RLock()
+	sm.con[bucketNum].mutex.RLock()
 	entry := findEntry(&sm.con[bucketNum], key)
 	var res [][2]float32
 
@@ -125,6 +123,6 @@ func (sm *SafeMap) get(key [2]float32) [][2]float32 {
 		res = nil
 	}
 
-	rwLock.RUnlock()
+	sm.con[bucketNum].mutex.RUnlock()
 	return res
 }
