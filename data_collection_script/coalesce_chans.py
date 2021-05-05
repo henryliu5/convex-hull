@@ -1,9 +1,12 @@
 import os
 import subprocess
 import sys
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+
 
 def plot_line(x,y,lab):
     plt.plot(x,y, label=lab)
@@ -35,12 +38,12 @@ test_descriptor = str(sys.argv[1])
 for p in range(0,7):
     n = 2**p
     print("DOing",p)
-    s=1000000
+    s=1600000
     test_gen = "python ../test_case_generation/test_case_gen.py " + str(s) + " " + "UNI" + " temp.txt"
     os.system(test_gen)
 
     print("t2") 
-    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + "_coal.txt --voi="+str(n) + " --procs=" + str(n) + " --impl=chan --coalesce=true"
+    cmd = "../runner --trials=" + str(trials) + " --input=./temp.txt --do_output=false --result_file=../data_results/coalesce_folder/" + test_descriptor + "_coal.txt --voi="+str(n) + " --procs=" + str(n) + " --impl=chan --coalesce"
     result = subprocess.check_output(cmd, shell=True)
 
     print("t1")
@@ -70,10 +73,10 @@ best_serial_time = res_df_qh[res_df_qh["Algo"] == "serial_qh"]["Time"].mean()
 res_df_qh = res_df_qh[res_df_qh["Algo"] == "parallel_qh"]
 
 
-plot_line(res_df["Var"], res_df["Time"] / 1000, "Chan's")
-plot_line(res_df_co["Var"], res_df_co["Time"] / 1000, "Chan's (Coalesce)")
-plot_line(res_df_si["Var"], res_df_si["Time"] / 1000, "Chan's 1 Simul Iter")
-plot_line(res_df_qh["Var"], res_df_qh["Time"] / 1000, "Quickhull")
+plot_line(res_df["Var"], res_df["Time"] / 1000000, "Chan's")
+plot_line(res_df_co["Var"], res_df_co["Time"] / 1000000, "Chan's (Coalesce)")
+plot_line(res_df_si["Var"], res_df_si["Time"] / 1000000, "Chan's 1 Simul Iter")
+plot_line(res_df_qh["Var"], res_df_qh["Time"] / 1000000, "Quickhull")
 plot_label("Max Procs", "Time (ms)", "Convex Hull Algorithm Time")
 plt.savefig("../data_results/coalesce_folder/" + test_descriptor + ".png")
 plt.close()

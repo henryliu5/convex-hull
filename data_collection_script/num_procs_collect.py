@@ -1,9 +1,12 @@
 import os
 import subprocess
 import sys
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+
 
 def plot_line(x,y,lab):
     plt.plot(x,y, label=lab)
@@ -48,7 +51,7 @@ res_df = pd.read_csv("../data_results/num_procs_results/" + test_descriptor + ".
 algos = res_df["Algo"].unique()
 for algo in algos:
     algo_df = res_df[res_df["Algo"] == algo]
-    plot_line(algo_df["Var"], algo_df["Time"] / 1000, algo)
+    plot_line(algo_df["Var"], algo_df["Time"] / 1000000, algo)
 
 plot_label("Max Procs", "Time (ms)", "Convex Hull Algorithm Time")
 plt.savefig("../data_results/num_procs_results/" + test_descriptor + ".png")
