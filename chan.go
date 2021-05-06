@@ -27,10 +27,6 @@ func find_tangent(subhull [][2]float32, p [2]float32, order float32) [2]float32 
 	return subhull[endpoint]
 }
 
-func mod(a, b int) int {
-	return (a%b + b) % b
-}
-
 // Left of line a->b
 func above(a, b, c [2]float32) bool {
 	return cross_prod(a, b, c) > 0
@@ -47,30 +43,28 @@ func below(a, b, c [2]float32) bool {
 // 		Use the direction of these vectors relative to P as the "order" so you can bsearch,
 //		leads to some casework
 func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float32 {
-	if len(V) < 3 {
+	n := len(V)
+	if n < 3 {
+		// Do not need to binary search if less than 3 points
 		return find_tangent(V, P, order)
 	}
-	// V = [][2]float32{[2]float32{-1, 1}, [2]float32{1, 1}, [2]float32{1, -1}, [2]float32{-1, -1}}
-	// Six cases
-	// if A up
-	// c down -> [a,c]
-	// c up above a -> [c,b]
-	// c up below a -> [a,c]
-	// if a down
-	// c up -> [c,b]
-	// c down below a -> [c,b]
-	// c down above a -> [a,c]
+
+	// a,b,c are points on edge chain [a,b]
+	// Start with V[0, n]
 	a := 0
-	b := len(V)
+	b := n
 	c := 0
-	n := len(V)
-	// Need V[N] == V[0]
-	// TODO don't do this, just use mod EVERYWHERE
-	// reason: in parallel multiple goroutines can look at this mem, don't want it to be intermittently modified
-	// temp_s := V[:len(V)+1]
-	// temp := temp_s[len(V)]
-	// V = append(V, V[0])
-	// defer func() { V[n] = temp }()
+
+	// Six cases in particular, we look at orientation (up/down in 2d)
+	// relative to reference point P. Summary:
+	// if a up
+	// 		c down -> [a,c]
+	// 		c up & above a -> [c,b]
+	// 		c up & below a -> [a,c]
+	// if a down
+	// 		c up -> [c,b]
+	// 		c down & below a -> [c,b]
+	// 		c down & above a -> [a,c]
 
 	dnC := false
 	dnA := false
@@ -78,6 +72,7 @@ func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float3
 		return V[0]
 	}
 
+	// Keep track of last iteration for specific convergence case
 	lastA := a + 1
 	lastB := b + 1
 	lastC := c + 1
@@ -93,24 +88,29 @@ func find_tangent_bsearch(V [][2]float32, P [2]float32, order float32) [2]float3
 		c = (a + b) / 2
 		dnC = below(P, V[mod(c+1, n)], V[c])
 		if above(P, V[c-1], V[c]) && !dnC {
+			// Found maximum tangent point
 			return V[c]
 		}
+
+		// Update binary search range based on casework from orientation of edge segments
 		dnA = below(P, V[mod(a+1, n)], V[a])
-		if dnA {
-			if !dnC {
+		if dnA { // If a points down
+			if !dnC { // If C points up
 				b = c
 			} else {
 				if below(P, V[a], V[c]) {
+					// a is below c
 					b = c
 				} else {
 					a = c
 				}
 			}
-		} else {
-			if dnC {
+		} else { // If a points up
+			if dnC { // If c points down
 				a = c
 			} else {
 				if above(P, V[a], V[c]) {
+					// a is above c
 					b = c
 				} else {
 					a = c
@@ -195,7 +195,7 @@ func seq_chans(points [][2]float32) [][2]float32 {
 		subhulls = subhulls[:0]
 		subhull_sizes = subhull_sizes[:0]
 
-		// Try out group size
+		// Try out new group size (estimate of # points on convex hull)
 		group_size := 1 << (1 << t)
 		if group_size == 0 {
 			fmt.Println("chan's failed, too many iterations")
@@ -240,9 +240,6 @@ func seq_chans(points [][2]float32) [][2]float32 {
 		 ****************************************/
 		march_start := time.Now()
 		var hull [][2]float32
-		// Basic way, worse than O(nlogh)
-		// hull = seq_jarvis(subhulls)
-		// Jarvis march meant for Chan's algorithm, should use bsearch
 		hull = subhull_jarvis(subhulls, subhull_sizes, group_size)
 		debug("march time", time.Since(march_start))
 

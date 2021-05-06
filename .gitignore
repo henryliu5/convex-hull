@@ -2,3 +2,4 @@
 *.txt
 runner
 *.prof
+save/

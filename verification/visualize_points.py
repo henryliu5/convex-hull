@@ -1,4 +1,7 @@
 import numpy as np
+# For lab machine
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import math
 import sys
@@ -41,28 +44,28 @@ def verify_points(hull_x, hull_y, x, y, save_dir, plot_graph=True):
     
     total_failed = 0
     
-    for i in range(len(x)):
-        failed = 0
-        for j in range(len(hull_x) - 1):
-            base_hull = (hull_x[j], hull_y[j])
-            next_hull = (hull_x[j+1], hull_y[j+1])
+    # for i in range(len(x)):
+    #     failed = 0
+    #     for j in range(len(hull_x) - 1):
+    #         base_hull = (hull_x[j], hull_y[j])
+    #         next_hull = (hull_x[j+1], hull_y[j+1])
             
             
-            vec_to_pos = np.array([x[i] - base_hull[0], y[i] - base_hull[1]])
-            vec_to_hull = np.array([next_hull[0] - base_hull[0], next_hull[1] - base_hull[1]])
+    #         vec_to_pos = np.array([x[i] - base_hull[0], y[i] - base_hull[1]])
+    #         vec_to_hull = np.array([next_hull[0] - base_hull[0], next_hull[1] - base_hull[1]])
             
-            #Not in polygon
-            if (np.cross(vec_to_hull, vec_to_pos) <= 0):
-                failed = 1
-                break
+    #         #Not in polygon
+    #         if (np.cross(vec_to_hull, vec_to_pos) <= 0):
+    #             failed = 1
+    #             break
         
-        if (plot_graph):
-            if (failed == 1):
-                plt.plot(x[i], y[i], 'ro-')
-            else:
-                plt.plot(x[i], y[i], 'go-')
-        total_failed += failed
-        
+    #     if (plot_graph):
+    #         if (failed == 1):
+    #             plt.plot(x[i], y[i], 'ro-')
+    #         else:
+    #             plt.plot(x[i], y[i], 'go-')
+    #     total_failed += failed
+    failed = 0
     if (plot_graph):
         plot_hull(hull_x, hull_y)
         plt.savefig(save_dir)

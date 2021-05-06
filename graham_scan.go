@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-var PAR_QUICKSORT_LIMIT int = 2000
+const PAR_QUICKSORT_LIMIT int = 2000
 
 // Parallel quicksort
 func parallel_qsort(a [][2]float32, cmp func([2]float32, [2]float32) bool, wg *sync.WaitGroup) {

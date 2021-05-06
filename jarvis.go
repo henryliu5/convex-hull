@@ -130,6 +130,7 @@ func parallel_jarvis(points [][2]float32) [][2]float32 {
 		wg.Done()
 	}
 	wg.Add(8)
+	// Can go CCW or CCW from max X, max Y, min X, min Y
 	go do_left(left)
 	go do_right(left)
 	go do_left(right)

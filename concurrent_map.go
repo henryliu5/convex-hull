@@ -19,7 +19,9 @@ type Entry struct {
 	mutex *sync.Mutex
 }
 
-// SafeMap is a custom concurrent map
+// SafeMap is a custom concurrent map using buckets
+// Keys are pairs of floats, values are slices of pairs of floats
+// Each bucket has a mutex to enable parallel access across keys
 type SafeMap struct {
 	con              []Bucket
 	size             int
@@ -32,7 +34,7 @@ func (sm *SafeMap) init(size int) {
 	sm.con = make([]Bucket, size)
 	for i := 0; i < size; i++ {
 		if sm.con[i].mutex != nil {
-			panic("Reinitializing same map")
+			panic("Reinitializing initialized map")
 		}
 		sm.con[i].mutex = &sync.RWMutex{}
 	}
@@ -46,14 +48,15 @@ func hash(key [2]float32) int {
 
 // Insert a key into the map
 func (sm *SafeMap) put(key [2]float32, value [][2]float32) {
-	// Find bucket, acquire read lock
-	// See if my key is there
-	// If my key is there
-	// Acquire mutex for key, add my key, release mutex for key
-	// Else
-	// Release read lock, acquire write lock for bucket
-	// Acquire write lock for bucket
-	// Go to end of linked list and add my key
+	// Procedure:
+	//	 Find bucket, acquire read lock
+	//	 See if my key is there
+	// 	 If my key is there
+	// 		Acquire mutex for key, add my value, release mutex for key
+	// 	 Else
+	// 		Release read lock, acquire write lock for bucket
+	// 		Acquire write lock for bucket
+	// 		Go to end of linked list and add my key
 	bucketNum := hash(key) % sm.size
 	rwLock := sm.con[bucketNum].mutex
 	if rwLock == nil {
@@ -115,7 +118,7 @@ func addEntry(bucket *Bucket, key [2]float32, value [][2]float32) {
 	}
 }
 
-// NOT concurrent
+// Must be careful with ordering guarantees when using get
 func (sm *SafeMap) get(key [2]float32) [][2]float32 {
 	bucketNum := hash(key) % sm.size
 	rwLock := sm.con[bucketNum].mutex

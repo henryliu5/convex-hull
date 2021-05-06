@@ -3,10 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Computes ab x ac
@@ -72,6 +74,12 @@ func highest(points [][2]float32) int {
 	return index
 }
 
+// Workaround in case of negative issues
+func mod(a, b int) int {
+	// return (a%b + b) % b
+	return a % b
+}
+
 // Distance between two points
 func dist(a, b [2]float32) float64 {
 	x := a[0] - b[0]
@@ -79,11 +87,18 @@ func dist(a, b [2]float32) float64 {
 	return math.Sqrt(float64(x*x + y*y))
 }
 
+// Add in/remove println debugging
 func debug(a ...interface{}) {
-	// change this to switch on/off
-	if true {
+	// change this to switch on/off (intentionally manual to allow for easy compiler opt out)
+	if false {
 		fmt.Println(a...)
 	}
+}
+
+// Timing metrics reporting, can defer
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Printf("%s took %s", name, elapsed)
 }
 
 // Output points to file
